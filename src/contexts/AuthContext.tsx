@@ -3,7 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 import { User, UserRole, LoginCredentials, AuthContextType } from '../interfaces/User';
-import { loginWithEmailAndPassword, logoutUser } from '../services/authService';
+import { loginWithRutAndPassword, logoutUser } from '../services/authService';
 
 // Singleton para evitar múltiples instancias del contexto
 const AuthContext = createContext<AuthContextType>({
@@ -37,7 +37,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             setCurrentUser({
               uid: firebaseUser.uid,
-              email: firebaseUser.email || '',
+              rut: userData.rut, // Añadimos el RUT
+              email: firebaseUser.email || userData.email || '',
               displayName: firebaseUser.displayName || userData.displayName,
               role: userData.role,
               active: userData.active,
@@ -64,11 +65,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // Función para iniciar sesión
+  // Función para iniciar sesión con RUT
   const login = async (credentials: LoginCredentials): Promise<void> => {
     setIsLoading(true);
     try {
-      const user = await loginWithEmailAndPassword(credentials);
+      const user = await loginWithRutAndPassword(credentials);
       if (!user) {
         throw new Error('No se pudo obtener la información del usuario');
       }
