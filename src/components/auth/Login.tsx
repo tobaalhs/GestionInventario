@@ -10,6 +10,36 @@ import { auth, db } from '../../firebase/config';
 import './Login.css';
 import logoSGI from '../../assets/logo-sgi.png';
 
+//exportar funciones para validaciones
+  // Función para validar RUT chileno
+  export const validateRut = (rut: string) => {
+    // Eliminar puntos y guión
+    const rutClean = rut.replace(/[.-]/g, '');
+    
+    if (rutClean.length < 2) return false;
+    
+    const body = rutClean.slice(0, -1);
+    let dv = rutClean.slice(-1).toUpperCase();
+    
+    // Calcular dígito verificador
+    let suma = 0;
+    let multiplo = 2;
+    
+    for (let i = body.length - 1; i >= 0; i--) {
+      suma += Number(body.charAt(i)) * multiplo;
+      multiplo = multiplo < 7 ? multiplo + 1 : 2;
+    }
+    
+    const dvEsperado = 11 - (suma % 11);
+    let dvCalculado = '';
+    
+    if (dvEsperado === 11) dvCalculado = '0';
+    else if (dvEsperado === 10) dvCalculado = 'K';
+    else dvCalculado = String(dvEsperado);
+    
+    return dvCalculado === dv;
+  };
+
 // Componente temporal para desarrollo - Crear usuarios iniciales
 const DevTools: React.FC = () => {
   const navigate = useNavigate();
@@ -68,7 +98,7 @@ const DevTools: React.FC = () => {
 };
 
 // Función para formatear RUT
-const formatRut = (rut: string) => {
+export const formatRut = (rut: string) => {
   // Eliminar puntos y guión
   const rutClean = rut.replace(/[.-]/g, '');
   
@@ -96,34 +126,7 @@ const Login: React.FC = () => {
   const [showDevTools, setShowDevTools] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Función para validar RUT chileno
-  const validateRut = (rut: string) => {
-    // Eliminar puntos y guión
-    const rutClean = rut.replace(/[.-]/g, '');
-    
-    if (rutClean.length < 2) return false;
-    
-    const body = rutClean.slice(0, -1);
-    let dv = rutClean.slice(-1).toUpperCase();
-    
-    // Calcular dígito verificador
-    let suma = 0;
-    let multiplo = 2;
-    
-    for (let i = body.length - 1; i >= 0; i--) {
-      suma += Number(body.charAt(i)) * multiplo;
-      multiplo = multiplo < 7 ? multiplo + 1 : 2;
-    }
-    
-    const dvEsperado = 11 - (suma % 11);
-    let dvCalculado = '';
-    
-    if (dvEsperado === 11) dvCalculado = '0';
-    else if (dvEsperado === 10) dvCalculado = 'K';
-    else dvCalculado = String(dvEsperado);
-    
-    return dvCalculado === dv;
-  };
+
 
   // validación del formulario
   const validationSchema = Yup.object({
