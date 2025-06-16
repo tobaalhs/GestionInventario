@@ -7,6 +7,7 @@ import RecoverPassword from './components/auth/RecoverPassword';
 import NewPassword from './components/auth/NewPassword';
 import Dashboard from './components/dashboard/Dashboard';
 import UserManagement from './components/admin/UserManagement';
+import Inventory from './components/inventory/Inventory';
 import './App.css';
 
 // Componente para rutas protegidas que requieren autenticación
@@ -54,6 +55,13 @@ function App() {
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          
+          {/* Ruta del inventario - protegida pero accesible para usuarios normales */}
+          <Route path="/inventory" element={
+            <ProtectedRoute>
+              <Inventory />
             </ProtectedRoute>
           } />
           
