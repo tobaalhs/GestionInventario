@@ -1,5 +1,4 @@
-// inventory.ts - Funciones principales del módulo de inventario
-import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase/config";
 
 export type Item = {
@@ -13,12 +12,34 @@ export type Item = {
     supplier: string;
     description?: string;
     imageUrl?: string;
+    imageAlt?: string;
     createdAt?: Date;
     updatedAt?: Date;
     isActive: boolean;
 };
 
-// HU08 - Interfaz de Inventario
+export type ChangeHistory = {
+    id: string;
+    itemId: string;
+    userId: string;
+    userEmail: string;
+    timestamp: Date;
+    changes: {
+        field: string;
+        oldValue: any;
+        newValue: any;
+    }[];
+    action: 'create' | 'update' | 'delete';
+};
+
+export type ItemBackup = {
+    id: string;
+    itemData: Item;
+    deletedAt: Date;
+    deletedBy: string;
+    reason?: string;
+};
+
 export async function getAllItems(): Promise<Item[]> {
     const q = collection(db, "items");
     const querySnapshot = await getDocs(q);
@@ -28,14 +49,12 @@ export async function getAllItems(): Promise<Item[]> {
     })) as Item[];
 }
 
-// Función para obtener items paginados (20 por página por defecto)
 export function getItemsPaginated(items: Item[], page: number = 1, itemsPerPage: number = 20): Item[] {
     const startIndex = (page - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return items.slice(startIndex, endIndex);
 }
 
-// HU09 - Registro de Productos
 export async function addItem(itemData: Omit<Item, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     const newItem = {
         ...itemData,
@@ -48,7 +67,6 @@ export async function addItem(itemData: Omit<Item, 'id' | 'createdAt' | 'updated
     return docRef.id;
 }
 
-// Validación de campos obligatorios
 export function validateRequiredFields(item: Partial<Item>): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
     
@@ -64,8 +82,24 @@ export function validateRequiredFields(item: Partial<Item>): { isValid: boolean;
         errors.push('El precio debe ser un número positivo');
     }
     
+    if (item.sellPrice === undefined || item.sellPrice < 0) {
+        errors.push('El precio de venta debe ser un número positivo');
+    }
+    
     if (item.stock === undefined || item.stock < 0) {
         errors.push('El stock debe ser un número positivo');
+    }
+    
+    if (item.category === undefined || item.category.trim() === '') {
+        errors.push('La categoría es obligatoria');
+    }
+    
+    if (item.supplier === undefined || item.supplier.trim() === '') {
+        errors.push('El proveedor es obligatorio');
+    }
+    
+    if (item.imageUrl && !isValidImageUrl(item.imageUrl)) {
+        errors.push('La URL de la imagen no es válida');
     }
     
     return {
@@ -74,17 +108,62 @@ export function validateRequiredFields(item: Partial<Item>): { isValid: boolean;
     };
 }
 
-// Validación de código único
+export function isValidImageUrl(url: string): boolean {
+    if (!url || url.trim() === '') return true;
+    
+    try {
+        const urlObj = new URL(url);
+        if (!['http:', 'https:'].includes(urlObj.protocol)) {
+            return false;
+        }
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+        const pathname = urlObj.pathname.toLowerCase();
+        const hasValidExtension = imageExtensions.some(ext => pathname.endsWith(ext));
+        
+        return hasValidExtension || pathname.includes('image') || url.includes('unsplash') || url.includes('pixabay');
+    } catch {
+        return false;
+    }
+}
+
+export function getDefaultImageForCategory(category: string): string {
+    const defaultImages: { [key: string]: string } = {
+        'Ropa': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
+        'Calzado': 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=300&fit=crop',
+        'Electrónicos': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
+        'Hogar': 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop',
+        'Deportes': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop',
+        'Libros': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop',
+        'Juguetes': 'https://images.unsplash.com/photo-1558877192-2d3d567c0e9a?w=400&h=300&fit=crop',
+        'Herramientas': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop',
+        'Accesorios': 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=300&fit=crop',
+        'Automóvil': 'https://images.unsplash.com/photo-1494976110309-fd2bc0ba0a31?w=400&h=300&fit=crop'
+    };
+    
+    return defaultImages[category] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300&fit=crop';
+}
+
+export function generateImageUrl(productName: string, category: string, useService: 'unsplash' | 'placeholder' = 'unsplash'): string {
+    const searchTerm = category || productName || 'product';
+    
+    switch (useService) {
+        case 'unsplash':
+            return `https://source.unsplash.com/400x300/?${encodeURIComponent(searchTerm)}`;
+        case 'placeholder':
+            return `https://via.placeholder.com/400x300/cccccc/666666?text=${encodeURIComponent(productName)}`;
+        default:
+            return `https://source.unsplash.com/400x300/?${encodeURIComponent(searchTerm)}`;
+    }
+}
+
 export function isCodeUnique(code: string, existingItems: Item[]): boolean {
     return !existingItems.some(item => item.code === code);
 }
 
-// HU10 - Interfaz de Productos (Modal de detalles)
 export function getItemById(items: Item[], id: string): Item | null {
     return items.find(item => item.id === id) || null;
 }
 
-// HU11 - Búsqueda de Productos
 export function searchItemsByName(items: Item[], searchTerm: string): Item[] {
     if (!searchTerm.trim()) return items;
     
@@ -112,7 +191,6 @@ export function searchItemsBySupplier(items: Item[], supplier: string): Item[] {
     );
 }
 
-// Función de búsqueda combinada con ordenamiento
 export function searchAndSortItems(
     items: Item[], 
     searchTerm: string, 
@@ -135,7 +213,6 @@ export function searchAndSortItems(
             filteredItems = items;
     }
     
-    // Usar las funciones de ordenamiento existentes
     switch (sortBy) {
         case 'name':
             return filteredItems.sort((a, b) => a.name.localeCompare(b.name));
@@ -148,7 +225,141 @@ export function searchAndSortItems(
     }
 }
 
-// HU12 - Edición de Productos
+export function getItemChanges(oldItem: Partial<Item>, newItem: Partial<Item> | Record<string, any>): { field: string; oldValue: any; newValue: any }[] {
+    const changes: { field: string; oldValue: any; newValue: any }[] = [];
+    
+    if (!oldItem || !newItem) return changes;
+    
+    const fieldsToCompare = Object.keys(newItem).filter(key => 
+        key !== 'id' && 
+        key !== 'createdAt' && 
+        key !== 'updatedAt' &&
+        key !== 'isActive'
+    );
+    
+    fieldsToCompare.forEach(field => {
+        const oldValue = oldItem[field as keyof Item];
+        const newValue = newItem[field as keyof Item];
+        
+        const normalizedOldValue = normalizeValue(oldValue);
+        const normalizedNewValue = normalizeValue(newValue);
+        
+        if (normalizedOldValue !== normalizedNewValue) {
+            const formattedOldValue = formatFieldValue(field, normalizedOldValue);
+            const formattedNewValue = formatFieldValue(field, normalizedNewValue);
+            
+            changes.push({
+                field: getFieldDisplayName(field),
+                oldValue: formattedOldValue,
+                newValue: formattedNewValue
+            });
+        }
+    });
+    
+    return changes;
+}
+
+function normalizeValue(value: any): any {
+    if (value === undefined || value === null || value === '') {
+        return '';
+    }
+
+    if (typeof value === 'string' && !isNaN(Number(value))) {
+        return Number(value);
+    }
+
+    if (typeof value === 'string') {
+        return value.trim();
+    }
+    
+    return value;
+}
+
+function formatFieldValue(field: string, value: any): string {
+    if (value === null || value === undefined || value === '') {
+        return '(vacío)';
+    }
+    
+    switch (field) {
+        case 'price':
+        case 'sellPrice':
+            return new Intl.NumberFormat('es-CL', {
+                style: 'currency',
+                currency: 'CLP',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(Number(value));
+        case 'stock':
+            return `${value} unidades`;
+        case 'imageUrl':
+            return value ? 'Con imagen' : 'Sin imagen';
+        case 'description':
+            return value ? (value.length > 50 ? `${value.substring(0, 50)}...` : value) : '(sin descripción)';
+        default:
+            return String(value);
+    }
+}
+
+export async function logItemChange(
+    itemId: string,
+    userId: string,
+    userEmail: string,
+    changes: { field: string; oldValue: any; newValue: any }[],
+    action: 'create' | 'update' | 'delete'
+): Promise<void> {
+    try {
+        const historyData: Omit<ChangeHistory, 'id'> = {
+            itemId,
+            userId,
+            userEmail,
+            timestamp: new Date(),
+            changes,
+            action
+        };
+        
+        console.log('Guardando historial:', historyData);
+        
+        await addDoc(collection(db, "itemHistory"), historyData);
+        console.log('Historial guardado exitosamente');
+    } catch (error) {
+        console.error('Error logging item change:', error);
+        throw error;
+    }
+}
+
+export async function getItemHistory(itemId: string): Promise<ChangeHistory[]> {
+    try {
+        console.log('Buscando historial para itemId:', itemId);
+        
+        const q = collection(db, "itemHistory");
+        const querySnapshot = await getDocs(q);
+        
+        const allHistory: ChangeHistory[] = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                itemId: data.itemId || '',
+                userId: data.userId || '',
+                userEmail: data.userEmail || '',
+                timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.timestamp),
+                changes: data.changes || [],
+                action: data.action || 'update'
+            } as ChangeHistory;
+        });
+        
+        console.log('Historial completo obtenido:', allHistory);
+        
+        const filteredHistory = allHistory.filter(h => h.itemId === itemId);
+        
+        console.log('Historial filtrado para este producto:', filteredHistory);
+        
+        return filteredHistory.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    } catch (error) {
+        console.error('Error getting item history:', error);
+        return [];
+    }
+}
+
 export async function updateItem(id: string, updates: Partial<Item>): Promise<void> {
     const itemRef = doc(db, "items", id);
     const updateData = {
@@ -159,18 +370,217 @@ export async function updateItem(id: string, updates: Partial<Item>): Promise<vo
     await updateDoc(itemRef, updateData);
 }
 
-// HU13 - Eliminación de Productos
+export async function updateItemWithHistory(
+    id: string, 
+    updates: Partial<Item>, 
+    userId: string, 
+    userEmail: string
+): Promise<void> {
+    try {
+        const itemRef = doc(db, "items", id);
+        const itemDoc = await getDoc(itemRef);
+
+        if (!itemDoc.exists()) {
+            throw new Error('El producto no existe');
+        }
+
+        const currentItem = { id: itemDoc.id, ...itemDoc.data() } as Item;
+
+        const cleanedUpdates: Record<string, any> = {};
+        
+        const validFields = ['name', 'category', 'supplier', 'price', 'sellPrice', 'stock', 'description', 'imageUrl'];
+        validFields.forEach(field => {
+            const value = updates[field as keyof Item];
+            if (value !== undefined) {
+                cleanedUpdates[field] = value;
+            }
+        });
+
+        const changes = getItemChanges(currentItem, cleanedUpdates);
+
+        if (changes.length > 0) {
+            await updateDoc(itemRef, cleanedUpdates);
+            await logItemChange(id, userId, userEmail, changes, 'update');
+        } else {
+            console.log('No se detectaron cambios reales para actualizar');
+        }
+    } catch (error) {
+        console.error('Error updating item with history:', error);
+        throw error;
+    }
+}
+
+export async function backupItemBeforeDelete(item: Item, deletedBy: string, reason?: string): Promise<void> {
+    try {
+        const backup: Omit<ItemBackup, 'id'> = {
+            itemData: item,
+            deletedAt: new Date(),
+            deletedBy,
+            reason: reason || 'Sin motivo especificado'
+        };
+        
+        await addDoc(collection(db, "deletedItems"), backup);
+        console.log('Backup del producto creado exitosamente');
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        throw error;
+    }
+}
+
+export async function checkPendingMovements(itemId: string): Promise<boolean> {
+    try {
+        const q = collection(db, "movements");
+        const querySnapshot = await getDocs(q);
+        
+        const pendingMovements = querySnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter((movement: any) => 
+                movement.itemId === itemId && 
+                movement.status === 'pending'
+            );
+        
+        return pendingMovements.length > 0;
+    } catch (error) {
+        console.error('Error checking pending movements:', error);
+        return false;
+    }
+}
+
+export async function deleteItemWithHistory(
+    id: string,
+    userId: string,
+    userEmail: string,
+    reason?: string
+): Promise<void> {
+    try {
+        const itemRef = doc(db, "items", id);
+        const itemDoc = await getDoc(itemRef);
+
+        if (!itemDoc.exists()) {
+            throw new Error('El producto no existe');
+        }
+
+        const item = { id: itemDoc.id, ...itemDoc.data() } as Item;
+
+        const hasPendingMovements = await checkPendingMovements(id);
+        if (hasPendingMovements) {
+            throw new Error('No se puede eliminar el producto porque tiene movimientos pendientes');
+        }
+
+        await backupItemBeforeDelete(item, userEmail, reason);
+
+        await deleteDoc(itemRef);
+
+        await logItemChange(id, userId, userEmail, [], 'delete');
+
+        console.log('Producto eliminado exitosamente con backup e historial');
+    } catch (error) {
+        console.error('Error deleting item with history:', error);
+        throw error;
+    }
+}
+
 export async function deleteItem(id: string): Promise<void> {
     const itemRef = doc(db, "items", id);
     await deleteDoc(itemRef);
 }
 
-// Eliminación temporal (marcar como inactivo)
-export async function softDeleteItem(id: string): Promise<void> {
-    await updateItem(id, { isActive: false });
+export async function softDeleteItemWithHistory(
+    id: string,
+    userId: string,
+    userEmail: string,
+    reason?: string
+): Promise<void> {
+    try {
+        const itemRef = doc(db, "items", id);
+        const itemDoc = await getDoc(itemRef);
+
+        if (!itemDoc.exists()) {
+            throw new Error('El producto no existe');
+        }
+
+        const currentItem = { id: itemDoc.id, ...itemDoc.data() } as Item;
+
+        if (!currentItem.isActive) {
+            throw new Error('El producto ya está inactivo');
+        }
+
+        await updateDoc(itemRef, { 
+            isActive: false,
+            updatedAt: new Date(),
+            deactivatedAt: new Date(),
+            deactivatedBy: userEmail,
+            deactivationReason: reason || 'Desactivación temporal desde interfaz de administrador'
+        });
+
+        const changes = [
+            {
+                field: 'Estado',
+                oldValue: 'Activo',
+                newValue: 'Inactivo'
+            }
+        ];
+
+        if (reason) {
+            changes.push({
+                field: 'Motivo',
+                oldValue: '',
+                newValue: reason
+            });
+        }
+
+        await logItemChange(id, userId, userEmail, changes, 'update');
+
+        console.log('Producto desactivado exitosamente');
+    } catch (error) {
+        console.error('Error deactivating item:', error);
+        throw error;
+    }
 }
 
-// HU14 - Indicador de Estado de Stock
+export async function reactivateItemWithHistory(
+    id: string,
+    userId: string,
+    userEmail: string
+): Promise<void> {
+    try {
+        const itemRef = doc(db, "items", id);
+        const itemDoc = await getDoc(itemRef);
+
+        if (!itemDoc.exists()) {
+            throw new Error('El producto no existe');
+        }
+
+        const currentItem = { id: itemDoc.id, ...itemDoc.data() } as Item;
+
+        if (currentItem.isActive) {
+            throw new Error('El producto ya está activo');
+        }
+
+        await updateDoc(itemRef, { 
+            isActive: true,
+            updatedAt: new Date(),
+            reactivatedAt: new Date(),
+            reactivatedBy: userEmail
+        });
+
+        const changes = [
+            {
+                field: 'Estado',
+                oldValue: 'Inactivo',
+                newValue: 'Activo'
+            }
+        ];
+
+        await logItemChange(id, userId, userEmail, changes, 'update');
+
+        console.log('Producto reactivado exitosamente');
+    } catch (error) {
+        console.error('Error reactivating item:', error);
+        throw error;
+    }
+}
+
 export function getStockStatus(stock: number, minStock: number = 5): 'high' | 'medium' | 'low' | 'out' {
     if (stock === 0) return 'out';
     if (stock <= minStock) return 'low';
@@ -188,7 +598,6 @@ export function getStockIndicatorColor(status: 'high' | 'medium' | 'low' | 'out'
     }
 }
 
-// HU15 - Vista de Tabla de Inventario
 export function formatItemsForTable(items: Item[]): Array<{
     id: string;
     name: string;
@@ -209,7 +618,6 @@ export function formatItemsForTable(items: Item[]): Array<{
     }));
 }
 
-// HU16 - Filtro de Búsqueda
 export function filterByCategory(items: Item[], category: string): Item[] {
     if (!category) return items;
     return items.filter(item => item.category === category);
@@ -232,14 +640,12 @@ export function filterByStockStatus(items: Item[], status: 'available' | 'low' |
     }
 }
 
-// Obtener categorías únicas para filtros
 export function getUniqueCategories(items: Item[]): string[] {
     const categories = items.map(item => item.category);
     const uniqueCategories = Array.from(new Set(categories));
     return uniqueCategories.sort();
 }
 
-// HU17 - Eliminación Temporal
 export function markAsInactive(items: Item[], id: string): Item[] {
     return items.map(item => 
         item.id === id ? { ...item, isActive: false } : item
@@ -252,4 +658,75 @@ export function getActiveItems(items: Item[]): Item[] {
 
 export function getInactiveItems(items: Item[]): Item[] {
     return items.filter(item => !item.isActive);
+}
+
+export function formatChangeHistory(history: ChangeHistory[]): string[] {
+    return history.map(entry => {
+        const date = entry.timestamp.toLocaleDateString('es-CL');
+        const time = entry.timestamp.toLocaleTimeString('es-CL', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        const user = entry.userEmail.split('@')[0];
+        
+        let action = '';
+        switch (entry.action) {
+            case 'create':
+                action = 'creó';
+                break;
+            case 'update':
+                action = 'actualizó';
+                break;
+            case 'delete':
+                action = 'eliminó';
+                break;
+        }
+        
+        const changesText = entry.changes.map(change => {
+            return `${change.field}: ${change.oldValue} → ${change.newValue}`;
+        }).join(', ');
+        
+        return `${date} ${time} - ${user} ${action} el producto${entry.changes.length > 0 ? ` (${changesText})` : ''}`;
+    });
+}
+
+function getFieldDisplayName(field: string): string {
+    const fieldNames: { [key: string]: string } = {
+        name: 'Nombre',
+        code: 'Código',
+        category: 'Categoría',
+        supplier: 'Proveedor',
+        price: 'Precio',
+        sellPrice: 'Precio de venta',
+        stock: 'Stock',
+        description: 'Descripción',
+        imageUrl: 'Imagen',
+        isActive: 'Estado'
+    };
+    
+    return fieldNames[field] || field;
+}
+
+export async function addItemWithHistory(
+    itemData: Omit<Item, 'id' | 'createdAt' | 'updatedAt'>,
+    userId: string,
+    userEmail: string
+): Promise<string> {
+    try {
+        const newItem = {
+            ...itemData,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            isActive: true
+        };
+        
+        const docRef = await addDoc(collection(db, "items"), newItem);
+        
+        await logItemChange(docRef.id, userId, userEmail, [], 'create');
+        
+        return docRef.id;
+    } catch (error) {
+        console.error('Error adding item with history:', error);
+        throw error;
+    }
 }

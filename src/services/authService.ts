@@ -377,5 +377,58 @@ export const resetLoginAttempts = async (uid: string): Promise<void> => {
   }
 };
 
+export const getBlockedUsers = async (): Promise<User[]> => {
+  try {
+    const usersCollection = collection(db, 'users');
+    const blockedQuery = query(usersCollection, where('active', '==', false));
+    const usersSnapshot = await getDocs(blockedQuery);
+    
+    const blockedUsers = usersSnapshot.docs.map(doc => ({
+      uid: doc.id,
+      ...doc.data()
+    } as User));
+
+    return blockedUsers.sort((a, b) => {
+      const nameA = a.displayName || '';
+      const nameB = b.displayName || '';
+      return nameA.localeCompare(nameB);
+    });
+  } catch (error) {
+    console.error('Error al obtener usuarios bloqueados:', error);
+    throw new Error('Error al cargar la lista de usuarios bloqueados');
+  }
+};
+
+export const verifyAdminPassword = async (email: string, password: string): Promise<boolean> => {
+  try {
+    const { signInWithEmailAndPassword } = await import('firebase/auth');
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    return !!credential;
+  } catch (error) {
+    console.error('Error verificando contraseña de admin:', error);
+    return false;
+  }
+};
+
+export const toggleUserActiveWithTimestamps = async (uid: string, active: boolean): Promise<void> => {
+  try {
+    const updateData: any = { 
+      active,
+      updatedAt: Timestamp.now()
+    };
+
+    if (!active) {
+      updateData.blockedAt = Timestamp.now();
+    } else {
+      updateData.unblockedAt = Timestamp.now();
+    }
+
+    await updateDoc(doc(db, 'users', uid), updateData);
+  } catch (error) {
+    console.error('Error al cambiar estado de usuario:', error);
+    throw error;
+  }
+};
+
 // Exportar la nueva función de login
 export { loginWithRutAndPassword as loginWithEmailAndPassword };
