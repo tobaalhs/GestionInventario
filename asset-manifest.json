@@ -1,16 +1,16 @@
 {
   "files": {
     "main.css": "/GestionInventario/static/css/main.ee274153.css",
-    "main.js": "/GestionInventario/static/js/main.f950e5ca.js",
+    "main.js": "/GestionInventario/static/js/main.3db6c121.js",
     "static/js/453.7881d95d.chunk.js": "/GestionInventario/static/js/453.7881d95d.chunk.js",
     "static/media/logo-sgi.png": "/GestionInventario/static/media/logo-sgi.9bfff9ca211312e41fd4.png",
     "index.html": "/GestionInventario/index.html",
     "main.ee274153.css.map": "/GestionInventario/static/css/main.ee274153.css.map",
-    "main.f950e5ca.js.map": "/GestionInventario/static/js/main.f950e5ca.js.map",
+    "main.3db6c121.js.map": "/GestionInventario/static/js/main.3db6c121.js.map",
     "453.7881d95d.chunk.js.map": "/GestionInventario/static/js/453.7881d95d.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.ee274153.css",
-    "static/js/main.f950e5ca.js"
+    "static/js/main.3db6c121.js"
   ]
 }
