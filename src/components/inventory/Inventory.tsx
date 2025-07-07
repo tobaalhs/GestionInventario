@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
     Item, 
     getAllItems, 
@@ -86,6 +87,7 @@ const ProductImage: React.FC<{
 };
 
 const Inventory: React.FC = () => {
+    const navigate = useNavigate();
     const { currentUser, isAdmin } = useAuth();
     const [items, setItems] = useState<Item[]>([]);
     const [filteredItems, setFilteredItems] = useState<Item[]>([]);
@@ -676,11 +678,11 @@ const Inventory: React.FC = () => {
             <div className="inventory-header">
                 <div className="header-actions">
                     <button 
-                        className="btn btn-secondary back-btn"
-                        onClick={() => window.location.href = '/dashboard'}
-                        title="Volver al Dashboard"
+                    className="btn btn-secondary back-btn"
+                    onClick={() => navigate('/dashboard')}
+                    title="Volver al Dashboard"
                     >
-                        ← Volver al Dashboard
+                    ← Volver al Dashboard
                     </button>
                 </div>
                 <div className="header-title">

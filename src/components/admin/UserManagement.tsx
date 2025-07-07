@@ -164,6 +164,7 @@ const UserManagement: React.FC = () => {
         <button 
           className="btn btn-secondary back-btn"
           onClick={() => navigate('/dashboard')}
+          title="Volver al Dashboard"
         >
           ← Volver al Dashboard
         </button>
