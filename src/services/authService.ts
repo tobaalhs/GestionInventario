@@ -164,7 +164,7 @@ export const verifySecurityAnswer = async (rut: string, answer: string): Promise
   }
 };
 
-// Crear nuevo usuario con pregunta de seguridad
+// BUILDER PARA CONSTRUCCIÓN COMPLEJA DE USUARIOS
 export const createUserWithSecurity = async (
   credentials: RegisterCredentials,
   role: UserRole = UserRole.EMPLOYEE
@@ -176,10 +176,10 @@ export const createUserWithSecurity = async (
       throw new Error('El RUT ya está registrado');
     }
     
-    // Crear el usuario en Firebase Auth
+    // Construir autenticación Firebase
     const userCredential = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
     
-    // Crear el documento del usuario en Firestore
+    // Construir documento de usuario en Firestore
     const userData: Omit<User, 'uid'> = {
       rut: credentials.rut,
       email: credentials.email,
@@ -191,8 +191,10 @@ export const createUserWithSecurity = async (
       securityAnswer: credentials.securityAnswer
     };
     
+    //Persistir en base de datos
     await setDoc(doc(db, 'users', userCredential.user.uid), userData);
     
+    // Retornar producto final construido
     return {
       uid: userCredential.user.uid,
       ...userData

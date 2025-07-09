@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, getDoc, Timestamp} from "firebase/firestore";
 import { db } from "../../firebase/config";
 
 export type Item = {
@@ -191,28 +191,31 @@ export function searchItemsBySupplier(items: Item[], supplier: string): Item[] {
     );
 }
 
+// ESTRATEGIAS DE BÚSQUEDA
 export function searchAndSortItems(
     items: Item[], 
     searchTerm: string, 
-    searchType: 'name' | 'code' | 'supplier',
+    searchType: 'name' | 'code' | 'supplier',   // <-- ESTRATEGIA SELECCIONABLE
     sortBy: 'name' | 'price' | 'stock' = 'name'
 ): Item[] {
     let filteredItems: Item[] = [];
     
+    // APLICACIÓN DEL PATRÓN STRATEGY
     switch (searchType) {
         case 'name':
-            filteredItems = searchItemsByName(items, searchTerm);
+            filteredItems = searchItemsByName(items, searchTerm);   // Estrategia A
             break;
         case 'code':
-            filteredItems = searchItemsByCode(items, searchTerm);
+            filteredItems = searchItemsByCode(items, searchTerm);   // Estrategia B
             break;
         case 'supplier':
-            filteredItems = searchItemsBySupplier(items, searchTerm);
+            filteredItems = searchItemsBySupplier(items, searchTerm);   // Estrategia C
             break;
         default:
             filteredItems = items;
     }
     
+    // ESTRATEGIAS DE ORDENAMIENTO
     switch (sortBy) {
         case 'name':
             return filteredItems.sort((a, b) => a.name.localeCompare(b.name));
@@ -730,3 +733,186 @@ export async function addItemWithHistory(
         throw error;
     }
 }
+
+/**
+ * Agregar producto específicamente para compras - SIN crear movimientos adicionales
+ * Esta función solo crea el producto, el movimiento de stock se crea por separado
+ */
+export const addItemForPurchase = async (
+  itemData: {
+    name: string;
+    code: string;
+    category: string;
+    price: number;
+    sellPrice: number;
+    supplier: string;
+    stock: number;
+    description?: string;
+    imageUrl?: string;
+    imageAlt?: string;
+    isActive?: boolean;
+  },
+  userId: string,
+  userEmail: string,
+  purchaseCode?: string // ✅ Agregar código de compra para el historial
+): Promise<string> => {
+  try {
+    console.log('🏗️ Creando producto para compra:', itemData.name);
+
+    // Verificar que el código sea único
+    const allItems = await getAllItems();
+    if (!isCodeUnique(itemData.code, allItems)) {
+      throw new Error('El código ya existe');
+    }
+
+    // Preparar datos del producto
+    const newItem = {
+      name: itemData.name.trim(),
+      code: itemData.code.trim().toUpperCase(),
+      category: itemData.category.trim(),
+      price: itemData.price,
+      sellPrice: itemData.sellPrice,
+      supplier: itemData.supplier.trim(),
+      stock: itemData.stock, // Stock inicial de la compra
+      description: itemData.description || '',
+      imageUrl: itemData.imageUrl || '',
+      imageAlt: itemData.imageAlt || `Imagen de ${itemData.name}`,
+      isActive: itemData.isActive !== false,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      createdBy: userEmail
+    };
+
+    console.log('📦 Datos del producto a crear:', {
+      name: newItem.name,
+      code: newItem.code,
+      stock: newItem.stock
+    });
+
+    // Crear el producto en Firestore
+    const docRef = await addDoc(collection(db, 'items'), newItem);
+    
+    console.log('✅ Producto creado exitosamente con ID:', docRef.id);
+    
+    // ✅ REGISTRAR EN EL HISTORIAL - PRODUCTO CREADO EN COMPRA
+    const historialChanges = [
+      {
+        field: 'Producto',
+        oldValue: 'No existía',
+        newValue: `Creado en compra ${purchaseCode || 'N/A'}`
+      },
+      {
+        field: 'Stock inicial',
+        oldValue: '0',
+        newValue: `${itemData.stock} unidades`
+      },
+      {
+        field: 'Precio de compra',
+        oldValue: '$0',
+        newValue: `$${itemData.price.toLocaleString('es-CL')}`
+      },
+      {
+        field: 'Proveedor',
+        oldValue: '',
+        newValue: itemData.supplier
+      }
+    ];
+
+    await logItemChange(
+      docRef.id,
+      userId,
+      userEmail,
+      historialChanges,
+      'create'
+    );
+
+    console.log('📝 Historial de creación registrado para:', itemData.name);
+    
+    return docRef.id;
+  } catch (error) {
+    console.error('💥 Error creando producto para compra:', error);
+    throw error;
+  }
+};
+
+/**
+ * Actualizar stock de producto existente con historial durante compra
+ */
+export const updateStockWithHistoryForPurchase = async (
+  productId: string,
+  quantityAdded: number,
+  unitPrice: number,
+  userId: string,
+  userEmail: string,
+  purchaseCode: string,
+  supplierName: string
+): Promise<void> => {
+  try {
+    console.log('📊 Actualizando stock con historial para producto:', productId);
+
+    // Obtener datos actuales del producto
+    const productRef = doc(db, 'items', productId);
+    const productDoc = await getDoc(productRef);
+
+    if (!productDoc.exists()) {
+      throw new Error('El producto no existe');
+    }
+
+    const currentData = productDoc.data() as Item;
+    const previousStock = currentData.stock || 0;
+    const newStock = previousStock + quantityAdded;
+
+    console.log('📈 Cambio de stock:', {
+      producto: currentData.name,
+      stockAnterior: previousStock,
+      cantidad: quantityAdded,
+      stockNuevo: newStock
+    });
+
+    // ✅ REGISTRAR EN EL HISTORIAL ANTES DE ACTUALIZAR
+    const historialChanges = [
+      {
+        field: 'Stock',
+        oldValue: `${previousStock} unidades`,
+        newValue: `${newStock} unidades (+${quantityAdded})`
+      },
+      {
+        field: 'Compra',
+        oldValue: '',
+        newValue: `Compra ${purchaseCode} - ${quantityAdded} unidades a $${unitPrice.toLocaleString('es-CL')} c/u`
+      },
+      {
+        field: 'Proveedor de la compra',
+        oldValue: '',
+        newValue: supplierName
+      },
+      {
+        field: 'Precio de compra unitario',
+        oldValue: '',
+        newValue: `$${unitPrice.toLocaleString('es-CL')}`
+      },
+      {
+        field: 'Valor total de la compra',
+        oldValue: '',
+        newValue: `$${(quantityAdded * unitPrice).toLocaleString('es-CL')}`
+      }
+    ];
+
+    await logItemChange(
+      productId,
+      userId,
+      userEmail,
+      historialChanges,
+      'update'
+    );
+
+    console.log('📝 Historial de stock actualizado registrado para:', currentData.name);
+
+    // ✅ NO actualizar el stock aquí - se hace en createStockMovement
+    // Solo registramos el historial, el stock se actualiza en el movimiento
+
+  } catch (error) {
+    console.error('💥 Error actualizando stock con historial:', error);
+    throw error;
+  }
+};

@@ -8,6 +8,7 @@ import NewPassword from './components/auth/NewPassword';
 import Dashboard from './components/dashboard/Dashboard';
 import UserManagement from './components/admin/UserManagement';
 import Inventory from './components/inventory/Inventory';
+import StockPurchase from './components/purchases/StockPurchase';
 import './App.css';
 
 // Componente para rutas protegidas que requieren autenticación
@@ -70,6 +71,13 @@ function App() {
             <AdminRoute>
               <UserManagement />
             </AdminRoute>
+          } />
+
+          {/* Rutas de administrador */}
+          <Route path="/purchases" element={
+            <ProtectedRoute>
+              <StockPurchase />
+            </ProtectedRoute>
           } />
           
           {/* Redirección por defecto */}

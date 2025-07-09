@@ -55,6 +55,12 @@ const Dashboard: React.FC = () => {
                 <p>Acceder a reportes y estadísticas</p>
                 <Link to="/admin/reports" className="module-link">Acceder</Link>
               </div>
+
+              <div className="module-card admin-module">
+                <h3>Compra de Stock</h3>
+                <p>Registrar nuevas compras e ingresos de inventario</p>
+                <Link to="/purchases" className="module-link">Acceder</Link>
+              </div>
             </>
           )}
         </div>

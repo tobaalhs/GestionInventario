@@ -21,20 +21,24 @@ interface AuthProviderProps {
 }
 
 // Proveedor de autenticación
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    // SUSCRIPCIÓN AL OBSERVABLE (Firebase Auth)
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // OBSERVER CALLBACK - Se ejecuta cuando cambia el estado de auth
       if (firebaseUser) {
         try {
-          // Obtener datos adicionales de la bd
+          // NOTIFICACIÓN: Usuario autenticado
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           
           if (userDoc.exists()) {
             const userData = userDoc.data();
             
+            // ACTUALIZAR ESTADO DE TODOS LOS COMPONENTES SUSCRITOS
             setCurrentUser({
               uid: firebaseUser.uid,
               rut: userData.rut, // Añadimos el RUT
@@ -46,7 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               lastLogin: userData.lastLogin ? userData.lastLogin.toDate() : new Date()
             });
           } else {
-            // Usuario autenticado pero sin documento en Firestore
+            // NOTIFICACIÓN: Usuario desautenticado
             setCurrentUser(null);
           }
         } catch (error) {
@@ -61,7 +65,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(false);
     });
     
-    // Limpiar la suscripción cuando el componente se desmonte
+    // CLEANUP: Desuscribirse cuando el componente se desmonte
     return () => unsubscribe();
   }, []);
 
@@ -99,6 +103,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Verificar si el usuario es administrador
   const isAdmin = currentUser?.role === UserRole.ADMIN;
 
+  // PROVEER EL ESTADO A TODOS LOS OBSERVADORES (componentes hijos)
   const value: AuthContextType = {
     currentUser,
     isLoading,
@@ -109,7 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {children}  {/* TODOS LOS COMPONENTES HIJOS SON OBSERVADORES */}
     </AuthContext.Provider>
   );
 };
