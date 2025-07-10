@@ -1,16 +1,16 @@
 {
   "files": {
-    "main.css": "/GestionInventario/static/css/main.ee274153.css",
-    "main.js": "/GestionInventario/static/js/main.c97ea4e6.js",
+    "main.css": "/GestionInventario/static/css/main.89fed65f.css",
+    "main.js": "/GestionInventario/static/js/main.db20097b.js",
     "static/js/453.7881d95d.chunk.js": "/GestionInventario/static/js/453.7881d95d.chunk.js",
     "static/media/logo-sgi.png": "/GestionInventario/static/media/logo-sgi.9bfff9ca211312e41fd4.png",
     "index.html": "/GestionInventario/index.html",
-    "main.ee274153.css.map": "/GestionInventario/static/css/main.ee274153.css.map",
-    "main.c97ea4e6.js.map": "/GestionInventario/static/js/main.c97ea4e6.js.map",
+    "main.89fed65f.css.map": "/GestionInventario/static/css/main.89fed65f.css.map",
+    "main.db20097b.js.map": "/GestionInventario/static/js/main.db20097b.js.map",
     "453.7881d95d.chunk.js.map": "/GestionInventario/static/js/453.7881d95d.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.ee274153.css",
-    "static/js/main.c97ea4e6.js"
+    "static/css/main.89fed65f.css",
+    "static/js/main.db20097b.js"
   ]
 }
