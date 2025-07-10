@@ -9,6 +9,8 @@ import Dashboard from './components/dashboard/Dashboard';
 import UserManagement from './components/admin/UserManagement';
 import Inventory from './components/inventory/Inventory';
 import StockPurchase from './components/purchases/StockPurchase';
+import SaleStock from './components/sales/SaleStock';
+import Reports from './components/reports/Reports';
 import './App.css';
 
 // Componente para rutas protegidas que requieren autenticación
@@ -65,6 +67,13 @@ function App() {
               <Inventory />
             </ProtectedRoute>
           } />
+
+          {/* Ruta de Ventas - protegida pero accesible para usuarios normales */}
+          <Route path="/sales" element={
+            <ProtectedRoute>
+              <SaleStock />
+            </ProtectedRoute>
+          } />
           
           {/* Rutas de administrador */}
           <Route path="/admin/users" element={
@@ -77,6 +86,13 @@ function App() {
           <Route path="/purchases" element={
             <ProtectedRoute>
               <StockPurchase />
+            </ProtectedRoute>
+          } />
+
+          {/* Rutas de administrador */}
+          <Route path="/reports" element={
+            <ProtectedRoute>
+              <Reports />
             </ProtectedRoute>
           } />
           

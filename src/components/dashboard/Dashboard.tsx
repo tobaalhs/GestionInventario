@@ -41,6 +41,13 @@ const Dashboard: React.FC = () => {
             <Link to="/inventory" className="module-link">Acceder</Link>
           </div>
 
+          {/* Módulos comunes para todos los usuarios */}
+          <div className="module-card">
+            <h3>Venta de stock</h3>
+            <p>Registrar ventas y gestión de clientes</p>
+            <Link to="/sales" className="module-link">Acceder</Link>
+          </div>
+
           {/* Módulos solo para administradores */}
           {isAdmin && (
             <>
@@ -53,7 +60,7 @@ const Dashboard: React.FC = () => {
               <div className="module-card admin-module">
                 <h3>Reportes</h3>
                 <p>Acceder a reportes y estadísticas</p>
-                <Link to="/admin/reports" className="module-link">Acceder</Link>
+                <Link to="/reports" className="module-link">Acceder</Link>
               </div>
 
               <div className="module-card admin-module">
