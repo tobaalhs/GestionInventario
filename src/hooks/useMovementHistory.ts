@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   MovementRecord,
   MovementFilters,
@@ -83,19 +83,29 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
   const [hasPrevious, setHasPrevious] = useState(false);
   
   // Estados de filtros
-  const [currentFilters, setCurrentFilters] = useState<MovementFilters>({
-    startDate: (() => {
-      const date = new Date();
-      date.setMonth(date.getMonth() - 1);
-      return date;
-    })(),
-    endDate: new Date(),
-    movementType: 'all',
-    sortBy: MovementSortField.DATE,
-    sortOrder: 'desc',
-    pageSize: 50,
-    page: 1
+  const [currentFilters, setCurrentFilters] = useState<MovementFilters>(() => {
+    const date = new Date();
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 1);
+    
+    return {
+      startDate,
+      endDate: date,
+      movementType: 'all',
+      sortBy: MovementSortField.DATE,
+      sortOrder: 'desc',
+      pageSize: 50,
+      page: 1
+    };
   });
+
+  // ✅ Ref para evitar dependencias circulares
+  const currentFiltersRef = useRef(currentFilters);
+  
+  // ✅ Actualizar ref cuando cambien los filtros
+  useEffect(() => {
+    currentFiltersRef.current = currentFilters;
+  }, [currentFilters]);
 
   /**
    * Cargar movimientos con filtros
@@ -105,11 +115,20 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
       setLoading(true);
       setError(null);
 
-      const filtersToUse = filters || currentFilters;
+      const filtersToUse = filters || currentFiltersRef.current; // ✅ Usar ref
       
-      console.log('📈 Cargando movimientos...', filtersToUse);
+      // ✅ Asegurar que pageSize siempre sea válido
+      const safeFilters = {
+        ...filtersToUse,
+        pageSize: filtersToUse.pageSize && filtersToUse.pageSize >= 1 && filtersToUse.pageSize <= 1000 
+          ? filtersToUse.pageSize 
+          : 50,
+        page: filtersToUse.page && filtersToUse.page >= 1 ? filtersToUse.page : 1
+      };
       
-      const result: MovementSearchResult = await searchMovements(filtersToUse);
+      console.log('📈 Cargando movimientos...', safeFilters);
+      
+      const result: MovementSearchResult = await searchMovements(safeFilters);
       
       setMovements(result.movements);
       setTotalCount(result.totalCount);
@@ -120,7 +139,7 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
       
       // Actualizar filtros actuales si se proporcionaron nuevos
       if (filters) {
-        setCurrentFilters({ ...filtersToUse, ...filters });
+        setCurrentFilters(safeFilters);
       }
       
       console.log(`✅ ${result.movements.length} movimientos cargados`);
@@ -132,7 +151,7 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
     } finally {
       setLoading(false);
     }
-  }, [currentFilters]);
+  }, []); // ✅ SIN DEPENDENCIAS
 
   /**
    * Cargar estadísticas de movimientos
@@ -142,11 +161,19 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
       setLoading(true);
       setError(null);
 
-      const filtersToUse = filters || currentFilters;
+      const filtersToUse = filters || currentFiltersRef.current; // ✅ Usar ref
+      
+      // ✅ Asegurar que pageSize siempre sea válido
+      const safeFilters = {
+        ...filtersToUse,
+        pageSize: filtersToUse.pageSize && filtersToUse.pageSize >= 1 && filtersToUse.pageSize <= 1000 
+          ? filtersToUse.pageSize 
+          : 50
+      };
       
       console.log('📊 Cargando estadísticas de movimientos...');
       
-      const stats = await getMovementStatistics(filtersToUse);
+      const stats = await getMovementStatistics(safeFilters);
       setStatistics(stats);
       
       console.log('✅ Estadísticas cargadas');
@@ -158,7 +185,7 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
     } finally {
       setLoading(false);
     }
-  }, [currentFilters]);
+  }, []); // ✅ SIN DEPENDENCIAS
 
   /**
    * Cargar resumen de movimientos
@@ -279,13 +306,16 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
    * Actualizar filtros
    */
   const updateFilters = useCallback((newFilters: Partial<MovementFilters>): void => {
-    const updatedFilters = { 
-      ...currentFilters, 
-      ...newFilters,
-      page: newFilters.page || 1 // Reset a página 1 cuando se cambian filtros
-    };
-    setCurrentFilters(updatedFilters);
-  }, [currentFilters]);
+    setCurrentFilters(prevFilters => {
+      const updatedFilters = { 
+        ...prevFilters, 
+        ...newFilters,
+        page: newFilters.page || 1,
+        pageSize: newFilters.pageSize || prevFilters.pageSize || 50
+      };
+      return updatedFilters;
+    });
+  }, []);
 
   /**
    * Limpiar filtros
@@ -320,9 +350,9 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
   const goToPage = useCallback(async (page: number): Promise<void> => {
     if (page < 1 || page > totalPages) return;
     
-    const newFilters = { ...currentFilters, page };
+    const newFilters = { ...currentFiltersRef.current, page }; // ✅ Usar ref
     await loadMovements(newFilters);
-  }, [currentFilters, totalPages, loadMovements]);
+  }, [totalPages]); // ✅ Solo totalPages como dependencia
 
   /**
    * Ir a página siguiente
@@ -330,7 +360,7 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
   const nextPage = useCallback(async (): Promise<void> => {
     if (!hasNext) return;
     await goToPage(currentPage + 1);
-  }, [hasNext, currentPage, goToPage]);
+  }, [hasNext, currentPage, goToPage]); // ✅ Ahora goToPage es estable
 
   /**
    * Ir a página anterior
@@ -338,7 +368,7 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
   const previousPage = useCallback(async (): Promise<void> => {
     if (!hasPrevious) return;
     await goToPage(currentPage - 1);
-  }, [hasPrevious, currentPage, goToPage]);
+  }, [hasPrevious, currentPage, goToPage]); // ✅ Ahora goToPage es estable
 
   /**
    * Limpiar error
@@ -351,8 +381,8 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
    * Refrescar movimientos
    */
   const refreshMovements = useCallback(async (): Promise<void> => {
-    await loadMovements(currentFilters);
-  }, [loadMovements, currentFilters]);
+    await loadMovements(currentFiltersRef.current); // ✅ Usar ref
+  }, [loadMovements]); // ✅ Ahora loadMovements es estable
 
   /**
    * Exportar movimientos
@@ -399,14 +429,29 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
   // Cargar movimientos iniciales al montar el componente
   useEffect(() => {
     loadMovements();
-  }, []);
+  }, [loadMovements]); // ✅ Ahora loadMovements es estable
 
-  // Recargar cuando cambien los filtros
+  // ✅ ESPECÍFICO: Solo recargar cuando cambien filtros importantes
   useEffect(() => {
     if (currentFilters.startDate && currentFilters.endDate) {
-      loadMovements(currentFilters);
+      // ✅ Solo cargar si realmente cambió algo importante
+      const timeoutId = setTimeout(() => {
+        loadMovements(currentFilters);
+      }, 100); // ✅ Pequeño delay para evitar llamadas múltiples
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [currentFilters.startDate, currentFilters.endDate, currentFilters.movementType]);
+  }, [
+    currentFilters.startDate?.getTime(),
+    currentFilters.endDate?.getTime(),
+    currentFilters.movementType,
+    currentFilters.searchTerm,
+    currentFilters.userId,
+    currentFilters.sortBy,
+    currentFilters.sortOrder,
+    currentFilters.page,
+    loadMovements // ✅ Ahora es estable
+  ]);
 
   // Limpiar error automáticamente después de 5 segundos
   useEffect(() => {

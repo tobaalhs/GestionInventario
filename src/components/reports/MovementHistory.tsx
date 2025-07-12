@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  searchMovements, 
-  getMovementStatistics, 
-  getMovementSummary 
-} from '../../services/movementHistoryService';
+import { useMovementHistory } from '../../hooks/useMovementHistory';
 import { 
   MovementRecord, 
   MovementFilters, 
-  MovementSearchResult, 
-  MovementStatistics,
   MovementType,
   MovementSortField 
 } from '../../interfaces/Movement';
@@ -19,87 +13,64 @@ interface MovementHistoryProps {}
 
 const MovementHistory: React.FC<MovementHistoryProps> = () => {
   const { currentUser } = useAuth();
-  const [movements, setMovements] = useState<MovementRecord[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [statistics, setStatistics] = useState<MovementStatistics | null>(null);
   
-  // Estados de filtros
-  const [filters, setFilters] = useState<MovementFilters>({
-    startDate: (() => {
-      const date = new Date();
-      date.setMonth(date.getMonth() - 1);
-      return date;
-    })(),
-    endDate: new Date(),
-    movementType: 'all',
-    sortBy: MovementSortField.DATE,
-    sortOrder: 'desc',
-    pageSize: 50
-  });
+  // ✅ MOVER EL HOOK AQUÍ DENTRO DEL COMPONENTE
+  const {
+    movements,
+    statistics,
+    loading,
+    error,
+    currentFilters,
+    totalCount,
+    updateFilters,
+    clearFilters,
+    loadStatistics,
+    clearError
+  } = useMovementHistory();
 
-  // Estados de UI
+  // ❌ ELIMINAR ESTOS ESTADOS DUPLICADOS - ya los proporciona el hook
+  // const [movements, setMovements] = useState<MovementRecord[]>([]);
+  // const [loading, setLoading] = useState(false);
+  // const [error, setError] = useState<string | null>(null);
+  // const [statistics, setStatistics] = useState<MovementStatistics | null>(null);
+  
+  // Estados de UI (estos sí los mantienes porque son específicos del componente)
   const [showFilters, setShowFilters] = useState(true);
   const [selectedMovement, setSelectedMovement] = useState<MovementRecord | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
-  useEffect(() => {
-    loadMovements();
-  }, [filters]);
+  // ❌ ELIMINAR ESTE ESTADO DE FILTROS DUPLICADO - ya lo maneja el hook
+  // const [filters, setFilters] = useState<MovementFilters>({...});
 
-  const loadMovements = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // ❌ ELIMINAR ESTA FUNCIÓN - ya la proporciona el hook
+  // useEffect(() => {
+  //   loadMovements();
+  // }, [filters]);
 
-      console.log('🔍 Cargando movimientos con filtros:', filters);
-      
-      const result: MovementSearchResult = await searchMovements(filters);
-      setMovements(result.movements);
-
-      // Cargar estadísticas si es necesario
-      if (filters.startDate && filters.endDate) {
-        const stats = await getMovementStatistics(filters);
-        setStatistics(stats);
-      }
-
-      console.log('✅ Movimientos cargados:', result.movements.length);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error cargando movimientos';
-      setError(errorMessage);
-      console.error('❌ Error cargando movimientos:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ❌ ELIMINAR ESTA FUNCIÓN DUPLICADA - usar la del hook
+  // const loadMovements = async () => { ... };
 
   const handleFilterChange = (newFilters: Partial<MovementFilters>) => {
-    setFilters(prev => ({
-      ...prev,
-      ...newFilters
-    }));
+    updateFilters(newFilters);
   };
 
-  const clearFilters = () => {
-    const defaultFilters: MovementFilters = {
-      startDate: (() => {
-        const date = new Date();
-        date.setMonth(date.getMonth() - 1);
-        return date;
-      })(),
-      endDate: new Date(),
-      movementType: 'all',
-      sortBy: MovementSortField.DATE,
-      sortOrder: 'desc',
-      pageSize: 50
-    };
-    setFilters(defaultFilters);
+  const handleClearFilters = () => {
+    clearFilters();
   };
+
+  // ✅ NO necesitamos este useEffect porque el hook ya maneja los cambios
+  // React.useEffect(() => {
+  //   if (currentFilters.startDate && currentFilters.endDate && movements.length > 0) {
+  //     loadStatistics(currentFilters);
+  //   }
+  // }, [currentFilters.startDate, currentFilters.endDate]);
+
+  // ❌ ELIMINAR ESTA FUNCIÓN DUPLICADA - usar clearFilters del hook
+  // const clearFilters = () => { ... };
 
   const handleExport = async () => {
     try {
-      // Implementar exportación a Excel/PDF
       console.log('Exportando movimientos...');
       alert('Función de exportación en desarrollo');
     } catch (error) {
@@ -166,7 +137,7 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
               <label>Fecha desde:</label>
               <input
                 type="date"
-                value={filters.startDate?.toISOString().split('T')[0] || ''}
+                value={currentFilters.startDate?.toISOString().split('T')[0] || ''}
                 onChange={(e) => handleFilterChange({ 
                   startDate: e.target.value ? new Date(e.target.value) : undefined 
                 })}
@@ -178,7 +149,7 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
               <label>Fecha hasta:</label>
               <input
                 type="date"
-                value={filters.endDate?.toISOString().split('T')[0] || ''}
+                value={currentFilters.endDate?.toISOString().split('T')[0] || ''}
                 onChange={(e) => handleFilterChange({ 
                   endDate: e.target.value ? new Date(e.target.value) : undefined 
                 })}
@@ -189,7 +160,7 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
             <div className="form-group">
               <label>Tipo de movimiento:</label>
               <select
-                value={filters.movementType || 'all'}
+                value={currentFilters.movementType || 'all'}
                 onChange={(e) => handleFilterChange({ 
                   movementType: e.target.value === 'all' ? 'all' : e.target.value as MovementType 
                 })}
@@ -210,7 +181,7 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
               <input
                 type="text"
                 placeholder="Código o nombre del producto..."
-                value={filters.searchTerm || ''}
+                value={currentFilters.searchTerm || ''}
                 onChange={(e) => handleFilterChange({ searchTerm: e.target.value })}
                 className="search-input"
               />
@@ -223,7 +194,7 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
               <input
                 type="text"
                 placeholder="Email del usuario..."
-                value={filters.userId || ''}
+                value={currentFilters.userId || ''}
                 onChange={(e) => handleFilterChange({ userId: e.target.value })}
                 className="filter-select"
               />
@@ -232,7 +203,7 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
             <div className="form-group">
               <label>Ordenar por:</label>
               <select
-                value={filters.sortBy || MovementSortField.DATE}
+                value={currentFilters.sortBy || MovementSortField.DATE}
                 onChange={(e) => handleFilterChange({ 
                   sortBy: e.target.value as MovementSortField 
                 })}
@@ -250,7 +221,7 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
             <div className="form-group">
               <label>Orden:</label>
               <select
-                value={filters.sortOrder || 'desc'}
+                value={currentFilters.sortOrder || 'desc'}
                 onChange={(e) => handleFilterChange({ 
                   sortOrder: e.target.value as 'asc' | 'desc' 
                 })}
@@ -264,7 +235,7 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
             <div className="form-group">
               <button 
                 className="btn btn-secondary"
-                onClick={clearFilters}
+                onClick={handleClearFilters}
               >
                 🗑️ Limpiar Filtros
               </button>
@@ -327,9 +298,43 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
                 </span>
               </td>
               <td>
-                <span className="stock-badge stock-medium">
-                  {movement.resultingStock}
-                </span>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <span style={{
+                    fontWeight: 'bold',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    minWidth: '40px',
+                    textAlign: 'center',
+                    backgroundColor: 
+                      (movement.resultingStock || 0) <= 0 ? '#fee' :
+                      (movement.resultingStock || 0) <= 10 ? '#fff3cd' :
+                      (movement.resultingStock || 0) <= 50 ? '#d1ecf1' : '#d4edda',
+                    color:
+                      (movement.resultingStock || 0) <= 0 ? '#d32f2f' :
+                      (movement.resultingStock || 0) <= 10 ? '#856404' :
+                      (movement.resultingStock || 0) <= 50 ? '#0c5460' : '#155724',
+                    border:
+                      (movement.resultingStock || 0) <= 0 ? '1px solid #f5c6cb' :
+                      (movement.resultingStock || 0) <= 10 ? '1px solid #ffeaa7' :
+                      (movement.resultingStock || 0) <= 50 ? '1px solid #bee5eb' : '1px solid #c3e6cb'
+                  }}>
+                    {movement.resultingStock !== undefined && movement.resultingStock !== null 
+                      ? movement.resultingStock 
+                      : (movement as any).newStock !== undefined 
+                        ? (movement as any).newStock
+                        : 'N/A'}
+                  </span>
+                  {((movement.resultingStock || 0) <= 10 && (movement.resultingStock || 0) > 0) && (
+                    <span title="Stock bajo">⚠️</span>
+                  )}
+                  {(movement.resultingStock || 0) <= 0 && (
+                    <span title="Sin stock">❌</span>
+                  )}
+                </div>
               </td>
               <td>
                 {movement.totalValue ? formatCurrency(movement.totalValue) : '-'}
@@ -444,6 +449,11 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
     );
   };
 
+  if (movements.length > 0) {
+    console.log('🔍 Primer movimiento:', movements[0]);
+    console.log('🔍 Campos disponibles:', Object.keys(movements[0]));
+  }
+
   return (
     <div className="movement-history">
       <div className="section-header">
@@ -480,6 +490,9 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
       {error && (
         <div className="error-messages">
           <p className="error-message">{error}</p>
+          <button onClick={clearError} className="btn btn-sm btn-secondary">
+            ✕ Cerrar
+          </button>
         </div>
       )}
 
@@ -490,7 +503,7 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
           <div className="no-results-icon">📊</div>
           <h3>No se encontraron movimientos</h3>
           <p>No hay movimientos que coincidan con los filtros aplicados.</p>
-          <button onClick={clearFilters} className="btn btn-primary">
+          <button onClick={handleClearFilters} className="btn btn-primary">
             Limpiar filtros
           </button>
         </div>
@@ -499,9 +512,9 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
           <div className="results-summary">
             <p>
               Mostrando <strong>{movements.length}</strong> movimientos 
-              {filters.startDate && filters.endDate && (
-                <> del {filters.startDate.toLocaleDateString('es-CL')} 
-                 al {filters.endDate.toLocaleDateString('es-CL')}</>
+              {currentFilters.startDate && currentFilters.endDate && (
+                <> del {currentFilters.startDate.toLocaleDateString('es-CL')} 
+                 al {currentFilters.endDate.toLocaleDateString('es-CL')}</>
               )}
             </p>
           </div>

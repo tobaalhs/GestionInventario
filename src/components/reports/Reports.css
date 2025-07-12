@@ -911,3 +911,382 @@ code {
     min-width: 36px;
   }
 }
+
+/* ✅ ESTILOS ADICIONALES PARA EL SISTEMA DE REPORTES */
+
+/* Sección de carga de datos de transacciones */
+.loading-section {
+  padding: 20px;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin: 15px 0;
+  background-color: #f8f9fa;
+}
+
+.loading-spinner {
+  font-size: 16px;
+  color: #666;
+  margin: 10px 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Sección sin datos */
+.no-data-section {
+  padding: 20px;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin: 15px 0;
+  background-color: #f9f9f9;
+}
+
+.no-data-section h4 {
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.no-data-section p {
+  color: #888;
+  margin: 5px 0;
+}
+
+.no-data-section small {
+  color: #999;
+  font-style: italic;
+}
+
+/* Sección de datos de transacciones */
+.transaction-data-section {
+  margin: 20px 0;
+}
+
+.transaction-data-section h4 {
+  color: #333;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.transaction-data-section .table-container {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Indicador de más registros */
+.more-records {
+  padding: 10px;
+  text-align: center;
+  background-color: #f5f5f5;
+  margin: 0;
+  font-style: italic;
+  color: #666;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* Mejorar la tabla de transacciones */
+.transaction-data-section .inventory-table {
+  margin: 0;
+  width: 100%;
+}
+
+.transaction-data-section .inventory-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  padding: 12px 8px;
+  border-bottom: 2px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.transaction-data-section .inventory-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+.transaction-data-section .inventory-table tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Códigos de transacción */
+.transaction-data-section code {
+  background-color: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  color: #495057;
+}
+
+/* Badges de estado en las transacciones */
+.transaction-data-section .status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 500;
+  text-align: center;
+  display: inline-block;
+  min-width: 70px;
+}
+
+.transaction-data-section .status-badge.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.transaction-data-section .status-badge.primary {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.transaction-data-section .status-badge.warning {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+/* Contenedor de scroll personalizado */
+.transaction-data-section .table-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.transaction-data-section .table-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.transaction-data-section .table-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.transaction-data-section .table-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  .transaction-data-section .table-container {
+    font-size: 0.9em;
+  }
+  
+  .transaction-data-section .inventory-table th,
+  .transaction-data-section .inventory-table td {
+    padding: 8px 4px;
+  }
+  
+  .transaction-data-section code {
+    font-size: 0.8em;
+  }
+  
+  .transaction-data-section .status-badge {
+    font-size: 0.75em;
+    padding: 3px 6px;
+    min-width: 60px;
+  }
+}
+
+/* Estilos para el modal de detalles */
+.report-details .transaction-data-section {
+  border-top: 1px solid #e0e0e0;
+  padding-top: 20px;
+  margin-top: 20px;
+}
+
+/* Animación de entrada para la tabla */
+.transaction-data-section .table-container {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mejoras para la sección de resumen */
+.summary-section {
+  margin-bottom: 25px;
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+}
+
+.stat-item label {
+  font-weight: 500;
+  color: #495057;
+  margin: 0;
+}
+
+.stat-item span {
+  font-weight: 600;
+  color: #212529;
+}
+
+/* Subsecciones de resumen */
+.subsummary {
+  margin: 15px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #28a745;
+}
+
+.subsummary h5 {
+  margin: 0 0 8px 0;
+  color: #495057;
+  font-weight: 600;
+}
+
+.subsummary p {
+  margin: 0;
+  color: #6c757d;
+}
+
+/* Mejorar los botones de acción */
+.action-buttons {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-buttons .btn {
+  padding: 6px 10px;
+  font-size: 0.9em;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.action-buttons .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Estados de carga para botones */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Indicador de progreso para generación de reportes */
+.generation-status {
+  margin: 20px 0;
+  animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.progress-bar {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  height: 8px;
+  margin: 15px 0;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background-color: white;
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+.status-details p {
+  margin: 5px 0;
+  opacity: 0.9;
+}
+
+/* Responsive mejoras */
+@media (max-width: 992px) {
+  .summary-stats {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 3px;
+  }
+  
+  .action-buttons .btn {
+    width: 100%;
+    min-width: 80px;
+  }
+}
+
+@media (max-width: 576px) {
+  .stat-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 5px;
+  }
+  
+  .status-header {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+}

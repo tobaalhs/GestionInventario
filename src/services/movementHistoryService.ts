@@ -29,6 +29,11 @@ import {
   CategoryMovementStat
 } from '../interfaces/Movement';
 
+import { 
+  getFirestore, 
+  Query
+} from 'firebase/firestore';
+
 /**
  * Convertir datos de Firestore a MovementRecord
  */
@@ -71,6 +76,12 @@ export const validateMovementFilters = (filters: MovementFilters): MovementFilte
   const errors: string[] = [];
   const warnings: string[] = [];
 
+  const safeFilters = {
+    ...filters,
+    pageSize: filters.pageSize || 50, // ← Valor por defecto
+    page: filters.page || 1
+  };
+
   // Validar fechas
   if (filters.startDate && filters.endDate) {
     if (filters.startDate >= filters.endDate) {
@@ -106,6 +117,14 @@ export const validateMovementFilters = (filters: MovementFilters): MovementFilte
     errors.push('El monto mínimo no puede ser negativo');
   }
 
+  if (safeFilters.pageSize < 1 || safeFilters.pageSize > 1000) {
+    errors.push('El tamaño de página debe estar entre 1 y 1000');
+  }
+
+  if (safeFilters.page < 1) {
+    errors.push('El número de página debe ser mayor a 0');
+  }
+
   // Validar paginación
   if (filters.page !== undefined && filters.page < 1) {
     errors.push('El número de página debe ser mayor a 0');
@@ -129,7 +148,7 @@ export const validateMovementFilters = (filters: MovementFilters): MovementFilte
     isValid: errors.length === 0,
     errors,
     warnings,
-    appliedFilters: filters
+    appliedFilters: safeFilters // ← Devolver los filtros con valores seguros
   };
 };
 
@@ -139,117 +158,181 @@ export const validateMovementFilters = (filters: MovementFilters): MovementFilte
 export const searchMovements = async (filters: MovementFilters): Promise<MovementSearchResult> => {
   try {
     console.log('🔍 Buscando movimientos con filtros:', filters);
-
+    
     // Validar filtros
     const validation = validateMovementFilters(filters);
     if (!validation.isValid) {
       throw new Error(`Filtros inválidos: ${validation.errors.join(', ')}`);
     }
 
-    let q = collection(db, 'stockMovements');
-    let queryConstraints: any[] = [];
+    const db = getFirestore();
+    
+    // ✅ CONSULTA SUPER SIMPLE - Solo fechas y ordenamiento por createdAt
+    let firebaseQuery = collection(db, 'stockMovements') as Query;
 
-    // Aplicar filtros de Firestore
-    if (filters.startDate) {
-      queryConstraints.push(where('createdAt', '>=', Timestamp.fromDate(filters.startDate)));
+    // 1. Solo filtro por fechas (para minimizar índices requeridos)
+    if (filters.startDate && filters.endDate) {
+      const startTimestamp = Timestamp.fromDate(filters.startDate);
+      const endTimestamp = Timestamp.fromDate(filters.endDate);
+      
+      firebaseQuery = query(
+        firebaseQuery,
+        where('createdAt', '>=', startTimestamp),
+        where('createdAt', '<=', endTimestamp)
+      );
     }
 
-    if (filters.endDate) {
-      queryConstraints.push(where('createdAt', '<=', Timestamp.fromDate(filters.endDate)));
-    }
+    // 2. Ordenar solo por createdAt (sin índices complejos)
+    firebaseQuery = query(firebaseQuery, orderBy('createdAt', 'desc'));
 
-    if (filters.productId) {
-      queryConstraints.push(where('productId', '==', filters.productId));
-    }
+    // 3. Limitar resultados (traer más de lo necesario para filtrar en memoria)
+    const maxResults = Math.min((filters.pageSize || 50) * 3, 1000); // Traer 3x más para filtrar
+    firebaseQuery = query(firebaseQuery, limit(maxResults));
 
+    console.log('🔥 Ejecutando consulta simple de Firestore...');
+    const snapshot = await getDocs(firebaseQuery);
+    
+    // ✅ CONVERTIR DATOS CON DEBUGGING
+let allMovements = snapshot.docs.map(doc => {
+  const data = doc.data();
+  
+  // 🔍 DEBUG: Ver qué campos de stock existen
+  console.log('🔍 Datos del documento:', {
+    id: doc.id,
+    resultingStock: data.resultingStock,
+    newStock: data.newStock,
+    currentStock: data.currentStock,
+    stock: data.stock,
+    finalStock: data.finalStock,
+    // Ver todos los campos para debuggear
+    allFields: Object.keys(data)
+  });
+  
+  return {
+    id: doc.id,
+    date: data.createdAt?.toDate() || new Date(),
+    productId: data.productId,
+    productCode: data.productCode,
+    productName: data.productName,
+    type: data.type,
+    quantity: data.quantity,
+    // ✅ Buscar el stock en varios campos posibles
+    resultingStock: data.resultingStock ?? data.newStock ?? data.currentStock ?? data.stock ?? data.finalStock ?? 0,
+    previousStock: data.previousStock ?? data.oldStock ?? 0,
+    unitPrice: data.unitPrice,
+    totalValue: data.totalValue,
+    userId: data.userId,
+    userEmail: data.userEmail,
+    userName: data.userEmail?.split('@')[0] || 'Usuario desconocido',
+    category: data.category || 'Sin categoría',
+    createdAt: data.createdAt?.toDate() || new Date(),
+    // Campos adicionales que podrían existir
+    newStock: data.newStock,
+    currentStock: data.currentStock,
+    stock: data.stock
+  } as MovementRecord;
+});
+
+    console.log(`📊 Traídos ${allMovements.length} movimientos de Firestore`);
+
+    // ✅ FILTRADO EN MEMORIA (evita índices complejos)
+    let filteredMovements = allMovements;
+
+    // Filtrar por tipo
     if (filters.movementType && filters.movementType !== 'all') {
-      queryConstraints.push(where('type', '==', filters.movementType));
+      filteredMovements = filteredMovements.filter(m => m.type === filters.movementType);
     }
 
+    // Filtrar por usuario
     if (filters.userId) {
-      queryConstraints.push(where('userId', '==', filters.userId));
+      const userSearch = filters.userId.toLowerCase();
+      filteredMovements = filteredMovements.filter(m => 
+        m.userId === filters.userId ||
+        m.userEmail?.toLowerCase().includes(userSearch) ||
+        m.userName?.toLowerCase().includes(userSearch)
+      );
     }
 
-    if (filters.supplierId) {
-      queryConstraints.push(where('supplierId', '==', filters.supplierId));
+    // Filtrar por búsqueda de texto
+    if (filters.searchTerm) {
+      const searchLower = filters.searchTerm.toLowerCase();
+      filteredMovements = filteredMovements.filter(movement => 
+        movement.productName?.toLowerCase().includes(searchLower) ||
+        movement.productCode?.toLowerCase().includes(searchLower) ||
+        movement.category?.toLowerCase().includes(searchLower) ||
+        movement.userName?.toLowerCase().includes(searchLower)
+      );
     }
 
-    if (filters.customerId) {
-      queryConstraints.push(where('customerId', '==', filters.customerId));
-    }
-
-    // Ordenamiento
-    const sortField = filters.sortBy || MovementSortField.DATE;
-    const sortOrder = filters.sortOrder || 'desc';
+    // ✅ ORDENAMIENTO EN MEMORIA (siempre aplicar si no es orden por fecha descendente)
+    const needsCustomSort = filters.sortBy !== MovementSortField.DATE || filters.sortOrder === 'asc';
     
-    // Mapear campos de ordenamiento
-    let firestoreSortField = 'createdAt';
-    switch (sortField) {
-      case MovementSortField.DATE:
-        firestoreSortField = 'createdAt';
-        break;
-      case MovementSortField.PRODUCT_NAME:
-        firestoreSortField = 'productName';
-        break;
-      case MovementSortField.PRODUCT_CODE:
-        firestoreSortField = 'productCode';
-        break;
-      case MovementSortField.TYPE:
-        firestoreSortField = 'type';
-        break;
-      case MovementSortField.QUANTITY:
-        firestoreSortField = 'quantity';
-        break;
-      case MovementSortField.TOTAL_VALUE:
-        firestoreSortField = 'totalValue';
-        break;
-      case MovementSortField.USER_NAME:
-        firestoreSortField = 'userEmail';
-        break;
-      case MovementSortField.RESULTING_STOCK:
-        firestoreSortField = 'newStock';
-        break;
+    if (needsCustomSort) {
+      filteredMovements.sort((a, b) => {
+        let valueA: any, valueB: any;
+        
+        switch (filters.sortBy) {
+          case MovementSortField.PRODUCT_NAME:
+            valueA = a.productName || '';
+            valueB = b.productName || '';
+            break;
+          case MovementSortField.TYPE:
+            valueA = a.type || '';
+            valueB = b.type || '';
+            break;
+          case MovementSortField.QUANTITY:
+            valueA = a.quantity || 0;
+            valueB = b.quantity || 0;
+            break;
+          case MovementSortField.TOTAL_VALUE:
+            valueA = a.totalValue || 0;
+            valueB = b.totalValue || 0;
+            break;
+          case MovementSortField.USER_NAME:
+            valueA = a.userName || '';
+            valueB = b.userName || '';
+            break;
+          case MovementSortField.DATE:
+          default:
+            valueA = a.date.getTime();
+            valueB = b.date.getTime();
+        }
+
+        const comparison = valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+        return (filters.sortOrder || 'desc') === 'desc' ? -comparison : comparison;
+      });
     }
 
-    queryConstraints.push(orderBy(firestoreSortField, sortOrder));
-
-    // Paginación
-    const pageSize = filters.pageSize || 50;
-    queryConstraints.push(limit(pageSize));
-
-    const finalQuery = query(q, ...queryConstraints);
-    const querySnapshot = await getDocs(finalQuery);
+    // ✅ PAGINACIÓN EN MEMORIA
+    const pageSize = Math.min(Math.max(filters.pageSize || 50, 1), 1000);
+    const page = Math.max(filters.page || 1, 1);
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
     
-    // Convertir documentos a MovementRecord
-    let movements: MovementRecord[] = querySnapshot.docs.map(convertFirestoreToMovement);
-
-    // Aplicar filtros adicionales (que no se pueden hacer en Firestore)
-    movements = applyAdditionalFilters(movements, filters);
-
-    // Calcular totales para la paginación
-    const totalCount = movements.length; // Esto sería aproximado en una implementación real
-    const currentPage = filters.page || 1;
+    const totalCount = filteredMovements.length;
+    const paginatedMovements = filteredMovements.slice(startIndex, endIndex);
+    
+    // ✅ CALCULAR VALOR TOTAL
+    const totalValue = filteredMovements.reduce((sum, mov) => sum + (mov.totalValue || 0), 0);
+    
     const totalPages = Math.ceil(totalCount / pageSize);
-    const hasNext = currentPage < totalPages;
-    const hasPrevious = currentPage > 1;
+    const hasNext = page < totalPages;
+    const hasPrevious = page > 1;
 
-    // Calcular valor total
-    const totalValue = movements.reduce((sum, mov) => sum + (mov.totalValue || 0), 0);
-
-    console.log(`✅ Encontrados ${movements.length} movimientos`);
+    console.log(`✅ Encontrados ${paginatedMovements.length}/${totalCount} movimientos (página ${page}/${totalPages})`);
 
     return {
-      movements,
+      movements: paginatedMovements,
       totalCount,
+      currentPage: page,
       totalPages,
-      currentPage,
-      pageSize,
       hasNext,
       hasPrevious,
-      totalValue,
-      filters: validation.appliedFilters
+      pageSize, // ✅ Añadir pageSize
+      totalValue, // ✅ Añadir totalValue
+      filters // ✅ Añadir filters
     };
-
+    
   } catch (error) {
     console.error('❌ Error buscando movimientos:', error);
     throw error;
