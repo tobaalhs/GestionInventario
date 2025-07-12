@@ -11,6 +11,7 @@ import Inventory from './components/inventory/Inventory';
 import StockPurchase from './components/purchases/StockPurchase';
 import SaleStock from './components/sales/SaleStock';
 import Reports from './components/reports/Reports';
+import PublicDownloadPage from './components/reports/PublicDownloadPage';
 import './App.css';
 
 // Componente para rutas protegidas que requieren autenticación
@@ -53,6 +54,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/recover" element={<RecoverPassword />} />
           <Route path="/reset-password" element={<NewPassword />} />
+          <Route path="/download/:reportId" element={<PublicDownloadPage />} />
           
           {/* Rutas protegidas */}
           <Route path="/dashboard" element={

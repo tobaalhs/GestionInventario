@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useReports } from '../../hooks/useReports';
+import EmailModal from './emailModal';
 import {
   TransactionReport,
   ReportType,
@@ -41,8 +42,12 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
   
   // ✅ Estado para controlar la descarga
   const [downloadingReportId, setDownloadingReportId] = useState<string | null>(null);
+
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailReportSelected, setEmailReportSelected] = useState<TransactionReport | null>(null);
+
   
-  // Estados del formulario
+  // ✅ Estados del formulario (SIMPLIFICADOS)
   const [reportForm, setReportForm] = useState({
     type: ReportType.SALES,
     title: '',
@@ -54,9 +59,9 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
     })(),
     endDate: new Date().toISOString().split('T')[0],
     includeTypes: ['sale'] as ('sale' | 'purchase')[],
-    searchTerm: '',
-    includeStatistics: true,
-    includeCharts: true
+    // ❌ ELIMINADO: searchTerm
+    // ✅ SIMPLIFICADO: Solo una opción para estadísticas
+    includeDetailedData: true
   });
 
   const [estimatedSize, setEstimatedSize] = useState<{
@@ -89,25 +94,40 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
     }
   }, [reportForm.startDate, reportForm.endDate, reportForm.includeTypes]);
 
-  // ✅ Hook para cerrar dropdowns al hacer clic fuera
+  // ✅ Hook mejorado para cerrar dropdowns al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // ✅ Cerrar todos los dropdowns abiertos
       const dropdowns = document.querySelectorAll('[data-dropdown="true"]');
+      let shouldClose = true;
+      
       dropdowns.forEach(dropdown => {
         const parent = dropdown.closest('.download-selector');
-        if (parent && !parent.contains(event.target as Node)) {
-          // Cerrar dropdown
-          const target = event.target as HTMLElement;
-          if (!target.closest('.download-selector')) {
-            // Trigger re-render to close dropdowns
-            setDownloadingReportId(prev => prev);
-          }
+        if (parent && parent.contains(event.target as Node)) {
+          shouldClose = false;
         }
       });
+      
+      if (shouldClose) {
+        // ✅ Forzar cierre de todos los dropdowns
+        setDownloadingReportId(prev => prev); // Trigger re-render
+      }
     };
 
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // ✅ Cerrar dropdowns con ESC
+        setDownloadingReportId(prev => prev);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside, true);
+    document.addEventListener('keydown', handleEscapeKey);
+    
+    return () => {
+      document.removeEventListener('click', handleClickOutside, true);
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
   }, []);
 
   const updateEstimation = async () => {
@@ -115,8 +135,8 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
       const filters: TransactionFilters = {
         startDate: new Date(reportForm.startDate),
         endDate: new Date(reportForm.endDate),
-        includeTypes: reportForm.includeTypes,
-        searchTerm: reportForm.searchTerm
+        includeTypes: reportForm.includeTypes
+        // ❌ ELIMINADO: searchTerm
       };
 
       const estimation = await estimateReportSize(filters);
@@ -128,33 +148,33 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
 
   // ✅ Función para cargar datos de transacciones dinámicamente
   const loadTransactionDataForReport = async (report: TransactionReport) => {
-  try {
-    setLoadingTransactionData(true);
-    console.log('🔄 Cargando datos de transacciones para:', report.title);
-    
-    // ✅ VERIFICACIÓN MÁS SEGURA para datos guardados
-    const savedDataLength = report.transactionData?.length || 0;
-    if (savedDataLength > 0) {
-      console.log(`✅ Usando datos guardados: ${savedDataLength} registros`);
-      setSelectedReportTransactionData(report.transactionData || []);
-      return;
+    try {
+      setLoadingTransactionData(true);
+      console.log('🔄 Cargando datos de transacciones para:', report.title);
+      
+      // ✅ VERIFICACIÓN MÁS SEGURA para datos guardados
+      const savedDataLength = report.transactionData?.length || 0;
+      if (savedDataLength > 0) {
+        console.log(`✅ Usando datos guardados: ${savedDataLength} registros`);
+        setSelectedReportTransactionData(report.transactionData || []);
+        return;
+      }
+      
+      // ✅ Si no tiene datos guardados, cargar dinámicamente
+      console.log('🔄 Cargando datos dinámicamente...');
+      const { getTransactionData } = await import('../../services/reportService');
+      const transactionData = await getTransactionData(report.filters);
+      
+      setSelectedReportTransactionData(transactionData);
+      console.log(`✅ Datos dinámicos cargados: ${transactionData.length} registros`);
+      
+    } catch (error) {
+      console.error('❌ Error cargando datos de transacciones:', error);
+      setSelectedReportTransactionData([]);
+    } finally {
+      setLoadingTransactionData(false);
     }
-    
-    // ✅ Si no tiene datos guardados, cargar dinámicamente
-    console.log('🔄 Cargando datos dinámicamente...');
-    const { getTransactionData } = await import('../../services/reportService');
-    const transactionData = await getTransactionData(report.filters);
-    
-    setSelectedReportTransactionData(transactionData);
-    console.log(`✅ Datos dinámicos cargados: ${transactionData.length} registros`);
-    
-  } catch (error) {
-    console.error('❌ Error cargando datos de transacciones:', error);
-    setSelectedReportTransactionData([]);
-  } finally {
-    setLoadingTransactionData(false);
-  }
-};
+  };
 
   // ✅ Función para manejar descarga con formato específico
   const handleDownloadReport = async (report: TransactionReport, format: 'excel' | 'pdf') => {
@@ -199,20 +219,76 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
     }
   };
 
-  // ✅ Componente selector de formato
+  // ✅ Componente selector de formato (MEJORADO)
   const DownloadFormatSelector: React.FC<{
     report: TransactionReport;
     isLoading: boolean;
   }> = ({ report, isLoading }) => {
     const [showOptions, setShowOptions] = useState(false);
+    const [dropdownRef, setDropdownRef] = useState<HTMLDivElement | null>(null);
 
     const handleDownload = async (format: 'excel' | 'pdf') => {
       setShowOptions(false);
       await handleDownloadReport(report, format);
     };
 
+    // ✅ Calcular posición del dropdown (MEJORADO)
+    const getDropdownStyle = (): React.CSSProperties => {
+      if (!dropdownRef) {
+        return {
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          background: 'white',
+          border: '1px solid #e0e0e0',
+          borderRadius: '4px',
+          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+          zIndex: 9999,
+          minWidth: '150px',
+          marginTop: '2px',
+          animation: 'slideDown 0.2s ease-out'
+        };
+      }
+
+      const rect = dropdownRef.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      
+      // ✅ Calcular espacio disponible
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const spaceRight = viewportWidth - rect.left;
+      
+      // ✅ Decidir posición vertical
+      const shouldShowAbove = spaceBelow < 100 && spaceAbove > 100;
+      
+      // ✅ Decidir posición horizontal
+      const shouldShowLeft = spaceRight < 150;
+
+      return {
+        position: 'fixed', // ✅ Cambio a fixed para mejor control
+        [shouldShowAbove ? 'bottom' : 'top']: shouldShowAbove ? 
+          `${viewportHeight - rect.top + 2}px` : 
+          `${rect.bottom + 2}px`,
+        [shouldShowLeft ? 'right' : 'left']: shouldShowLeft ? 
+          `${viewportWidth - rect.right}px` : 
+          `${rect.left}px`,
+        background: 'white',
+        border: '1px solid #e0e0e0',
+        borderRadius: '4px',
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
+        zIndex: 10000, // ✅ Z-index aún más alto
+        minWidth: '150px',
+        animation: 'slideDown 0.2s ease-out'
+      };
+    };
+
     return (
-      <div className="download-selector" style={{ position: 'relative', display: 'inline-block' }}>
+      <div 
+        className="download-selector" 
+        style={{ position: 'relative', display: 'inline-block' }}
+        ref={setDropdownRef}
+      >
         <button 
           className="btn btn-sm btn-success"
           onClick={() => setShowOptions(!showOptions)}
@@ -223,23 +299,32 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         </button>
         
         {showOptions && (
-          <div 
-            className="download-options"
-            data-dropdown="true"
-            style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              background: 'white',
-              border: '1px solid #e0e0e0',
-              borderRadius: '4px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              zIndex: 1000,
-              minWidth: '150px',
-              marginTop: '2px',
-              animation: 'slideDown 0.2s ease-out'
-            }}
-          >
+          <>
+            {/* ✅ Overlay mejorado para cerrar el dropdown */}
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 9999, // ✅ Justo debajo del dropdown
+                background: 'transparent',
+                cursor: 'default'
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowOptions(false);
+              }}
+            />
+            <div 
+              className="download-options"
+              data-dropdown="true"
+              style={getDropdownStyle()}
+              onClick={(e) => e.stopPropagation()} // ✅ Evitar que se cierre al hacer clic dentro
+            >
+          
             <button 
               className="download-option excel"
               style={{
@@ -282,7 +367,8 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
             >
               📄 PDF (.pdf)
             </button>
-          </div>
+                      </div>
+          </>
         )}
       </div>
     );
@@ -295,8 +381,8 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
       const filters: TransactionFilters = {
         startDate: new Date(reportForm.startDate),
         endDate: new Date(reportForm.endDate),
-        includeTypes: reportForm.includeTypes,
-        searchTerm: reportForm.searchTerm
+        includeTypes: reportForm.includeTypes
+        // ❌ ELIMINADO: searchTerm
       };
 
       // Validar filtros
@@ -313,8 +399,9 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         filters,
         exportConfig: {
           formats: ['pdf', 'excel'],
-          includeCharts: reportForm.includeCharts,
-          includeStatistics: reportForm.includeStatistics,
+          // ✅ CLARIFICADO: No incluir gráficos automáticos (no son posibles con XLSX básico)
+          includeCharts: false, // Los gráficos se crean manualmente en Excel
+          includeStatistics: reportForm.includeDetailedData,
           includeRawData: true,
           groupData: true,
           applyFilters: true,
@@ -336,9 +423,7 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         })(),
         endDate: new Date().toISOString().split('T')[0],
         includeTypes: ['sale'],
-        searchTerm: '',
-        includeStatistics: true,
-        includeCharts: true
+        includeDetailedData: true
       });
       
       // Recargar lista de reportes
@@ -353,8 +438,8 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
       const filters: TransactionFilters = {
         startDate: new Date(reportForm.startDate),
         endDate: new Date(reportForm.endDate),
-        includeTypes: reportForm.includeTypes,
-        searchTerm: reportForm.searchTerm
+        includeTypes: reportForm.includeTypes
+        // ❌ ELIMINADO: searchTerm
       };
 
       const preview = await previewReportData(filters);
@@ -407,6 +492,7 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
     }).format(amount);
   };
 
+  // ✅ FORMULARIO SIMPLIFICADO
   const renderGenerateForm = () => (
     <div className="report-form">
       <div className="form-row">
@@ -467,17 +553,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
             required
           />
         </div>
-
-        <div className="form-group">
-          <label>Buscar término (opcional):</label>
-          <input
-            type="text"
-            value={reportForm.searchTerm}
-            onChange={(e) => setReportForm(prev => ({ ...prev, searchTerm: e.target.value }))}
-            placeholder="Cliente, producto, código..."
-            className="filter-select"
-          />
-        </div>
       </div>
 
       <div className="form-group">
@@ -491,38 +566,41 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         />
       </div>
 
-      <div className="form-row">
-        <div className="form-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={reportForm.includeStatistics}
-              onChange={(e) => setReportForm(prev => ({ ...prev, includeStatistics: e.target.checked }))}
-            />
-            Incluir estadísticas detalladas
-          </label>
-        </div>
-
-        <div className="form-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={reportForm.includeCharts}
-              onChange={(e) => setReportForm(prev => ({ ...prev, includeCharts: e.target.checked }))}
-            />
-            Incluir gráficos
-          </label>
-        </div>
+      {/* ✅ OPCIÓN SIMPLIFICADA Y CLARA */}
+      <div className="form-group">
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={reportForm.includeDetailedData}
+            onChange={(e) => setReportForm(prev => ({ ...prev, includeDetailedData: e.target.checked }))}
+            style={{ width: 'auto' }}
+          />
+          <span>Incluir estadísticas detalladas y análisis completo</span>
+        </label>
+        <small style={{ color: '#6b7280', fontSize: '0.8em', marginLeft: '24px' }}>
+          ✅ Incluye: estadísticas completas, tablas de análisis y datos detallados<br/>
+          ⚠️ Nota: Los gráficos deben crearse manualmente en Excel después de la descarga
+        </small>
       </div>
 
       {estimatedSize.estimatedRecords > 0 && (
         <div className="estimation-info">
-          <div className="info-card">
-            <h4>📊 Estimación del Reporte</h4>
-            <p><strong>Registros estimados:</strong> {estimatedSize.estimatedRecords.toLocaleString()}</p>
-            <p><strong>Tiempo estimado:</strong> {Math.ceil(estimatedSize.estimatedTime)} segundos</p>
+          <div className="info-card" style={{
+            padding: '16px',
+            background: '#f0f9ff',
+            border: '1px solid #0ea5e9',
+            borderRadius: '8px',
+            margin: '15px 0'
+          }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#0c4a6e' }}>📊 Estimación del Reporte</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+              <p style={{ margin: '0' }}><strong>Registros estimados:</strong> {estimatedSize.estimatedRecords.toLocaleString()}</p>
+              <p style={{ margin: '0' }}><strong>Tiempo estimado:</strong> {Math.ceil(estimatedSize.estimatedTime)} segundos</p>
+            </div>
             {estimatedSize.estimatedRecords > 10000 && (
-              <p className="warning-text">⚠️ Reporte muy grande, puede tardar varios minutos</p>
+              <p style={{ margin: '10px 0 0 0', color: '#dc2626', fontWeight: '500' }}>
+                ⚠️ Reporte muy grande, puede tardar varios minutos
+              </p>
             )}
           </div>
         </div>
@@ -535,34 +613,36 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
           {previewData.sampleData.length > 0 && (
             <div className="preview-table">
               <h5>Muestra de datos:</h5>
-              <table className="inventory-table">
-                <thead>
-                  <tr>
-                    <th>Código</th>
-                    <th>Tipo</th>
-                    <th>Fecha</th>
-                    <th>Contraparte</th>
-                    <th>Monto</th>
-                    <th>Items</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewData.sampleData.slice(0, 5).map((transaction, index) => (
-                    <tr key={index}>
-                      <td><code>{transaction.code}</code></td>
-                      <td>
-                        <span className={`status-badge ${transaction.type === 'sale' ? 'success' : 'primary'}`}>
-                          {transaction.type === 'sale' ? 'Venta' : 'Compra'}
-                        </span>
-                      </td>
-                      <td>{new Date(transaction.date).toLocaleDateString('es-CL')}</td>
-                      <td>{transaction.counterparty}</td>
-                      <td>{formatCurrency(transaction.totalAmount)}</td>
-                      <td>{transaction.itemsCount}</td>
+              <div className="table-container">
+                <table className="inventory-table">
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Tipo</th>
+                      <th>Fecha</th>
+                      <th>Contraparte</th>
+                      <th>Monto</th>
+                      <th>Items</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {previewData.sampleData.slice(0, 5).map((transaction, index) => (
+                      <tr key={index}>
+                        <td><code>{transaction.code}</code></td>
+                        <td>
+                          <span className={`status-badge ${transaction.type === 'sale' ? 'success' : 'primary'}`}>
+                            {transaction.type === 'sale' ? 'Venta' : 'Compra'}
+                          </span>
+                        </td>
+                        <td>{new Date(transaction.date).toLocaleDateString('es-CL')}</td>
+                        <td>{transaction.counterparty}</td>
+                        <td>{formatCurrency(transaction.totalAmount)}</td>
+                        <td>{transaction.itemsCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {previewData.sampleData.length > 5 && (
                 <p><em>... y {previewData.sampleData.length - 5} registros más</em></p>
               )}
@@ -575,118 +655,118 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
 
   // ✅ Renderizar datos de transacciones con carga dinámica
   const renderTransactionData = () => {
-  if (loadingTransactionData) {
-    return (
-      <div className="loading-section">
-        <h4>📊 Datos de Transacciones</h4>
-        <div className="loading-spinner">🔄 Cargando datos de transacciones...</div>
-      </div>
-    );
-  }
-
-  // ✅ Mostrar datos cargados dinámicamente O datos guardados
-  const dataToShow = selectedReportTransactionData.length > 0 
-    ? selectedReportTransactionData 
-    : selectedReport?.transactionData || [];
-
-  if (dataToShow.length === 0) {
-    return (
-      <div className="no-data-section">
-        <h4>📊 Datos de Transacciones</h4>
-        <p>No hay datos de transacciones disponibles para este reporte.</p>
-        <button 
-          className="btn btn-sm btn-primary"
-          onClick={() => loadTransactionDataForReport(selectedReport!)}
-          style={{ marginTop: '10px' }}
-        >
-          🔄 Cargar datos completos
-        </button>
-      </div>
-    );
-  }
-
-  // ✅ CORRECCIÓN: Verificación más segura para evitar undefined
-  const savedDataLength = selectedReport?.transactionData?.length || 0;
-  const isFromSavedData = selectedReportTransactionData.length === 0 && savedDataLength > 0;
-  const totalFromSummary = selectedReport?.summary?.totalTransactions || 0;
-  const isPartialData = isFromSavedData && totalFromSummary > dataToShow.length;
-  
-  return (
-    <div className="transaction-data-section">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-        <h4>📊 Datos de Transacciones ({dataToShow.length})</h4>
-        {isPartialData && (
-          <button 
-            className="btn btn-sm btn-secondary"
-            onClick={() => loadTransactionDataForReport(selectedReport!)}
-            title="Cargar todas las transacciones dinámicamente"
-          >
-            🔄 Ver todas ({totalFromSummary})
-          </button>
-        )}
-      </div>
-      
-      {isPartialData && (
-        <div style={{ 
-          padding: '8px 12px', 
-          backgroundColor: '#e7f3ff', 
-          border: '1px solid #b3d7ff', 
-          borderRadius: '4px', 
-          marginBottom: '15px',
-          fontSize: '0.9em'
-        }}>
-          📋 Mostrando muestra guardada ({dataToShow.length} de {totalFromSummary} transacciones). 
-          <span style={{ color: '#0066cc', cursor: 'pointer' }} 
-                onClick={() => loadTransactionDataForReport(selectedReport!)}>
-            Hacer clic para ver todas →
-          </span>
+    if (loadingTransactionData) {
+      return (
+        <div className="loading-section">
+          <h4>📊 Datos de Transacciones</h4>
+          <div className="loading-spinner">🔄 Cargando datos de transacciones...</div>
         </div>
-      )}
-      
-      <div className="table-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-        <table className="inventory-table">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Tipo</th>
-              <th>Fecha</th>
-              <th>Contraparte</th>
-              <th>Monto</th>
-              <th>Items</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dataToShow.slice(0, 20).map((transaction, index) => (
-              <tr key={index}>
-                <td><code>{transaction.code}</code></td>
-                <td>
-                  <span className={`status-badge ${transaction.type === 'sale' ? 'success' : 'primary'}`}>
-                    {transaction.type === 'sale' ? 'Venta' : 'Compra'}
-                  </span>
-                </td>
-                <td>{transaction.transactionDate.toLocaleDateString('es-CL')}</td>
-                <td>{transaction.counterparty.name}</td>
-                <td>{formatCurrency(transaction.totalAmount)}</td>
-                <td>{transaction.items.length}</td>
-                <td>
-                  <span className={`status-badge ${transaction.status === 'completed' ? 'success' : 'warning'}`}>
-                    {transaction.status === 'completed' ? 'Completado' : transaction.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {dataToShow.length > 20 && (
-          <p className="more-records">
-            <em>... y {dataToShow.length - 20} transacciones más</em>
-          </p>
+      );
+    }
+
+    // ✅ Mostrar datos cargados dinámicamente O datos guardados
+    const dataToShow = selectedReportTransactionData.length > 0 
+      ? selectedReportTransactionData 
+      : selectedReport?.transactionData || [];
+
+    if (dataToShow.length === 0) {
+      return (
+        <div className="no-data-section">
+          <h4>📊 Datos de Transacciones</h4>
+          <p>No hay datos de transacciones disponibles para este reporte.</p>
+          <button 
+            className="btn btn-sm btn-primary"
+            onClick={() => loadTransactionDataForReport(selectedReport!)}
+            style={{ marginTop: '10px' }}
+          >
+            🔄 Cargar datos completos
+          </button>
+        </div>
+      );
+    }
+
+    // ✅ CORRECCIÓN: Verificación más segura para evitar undefined
+    const savedDataLength = selectedReport?.transactionData?.length || 0;
+    const isFromSavedData = selectedReportTransactionData.length === 0 && savedDataLength > 0;
+    const totalFromSummary = selectedReport?.summary?.totalTransactions || 0;
+    const isPartialData = isFromSavedData && totalFromSummary > dataToShow.length;
+    
+    return (
+      <div className="transaction-data-section">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h4>📊 Datos de Transacciones ({dataToShow.length})</h4>
+          {isPartialData && (
+            <button 
+              className="btn btn-sm btn-secondary"
+              onClick={() => loadTransactionDataForReport(selectedReport!)}
+              title="Cargar todas las transacciones dinámicamente"
+            >
+              🔄 Ver todas ({totalFromSummary})
+            </button>
+          )}
+        </div>
+        
+        {isPartialData && (
+          <div style={{ 
+            padding: '8px 12px', 
+            backgroundColor: '#e7f3ff', 
+            border: '1px solid #b3d7ff', 
+            borderRadius: '4px', 
+            marginBottom: '15px',
+            fontSize: '0.9em'
+          }}>
+            📋 Mostrando muestra guardada ({dataToShow.length} de {totalFromSummary} transacciones). 
+            <span style={{ color: '#0066cc', cursor: 'pointer' }} 
+                  onClick={() => loadTransactionDataForReport(selectedReport!)}>
+              Hacer clic para ver todas →
+            </span>
+          </div>
         )}
+        
+        <div className="table-container">
+          <table className="inventory-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Tipo</th>
+                <th>Fecha</th>
+                <th>Contraparte</th>
+                <th>Monto</th>
+                <th>Items</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dataToShow.slice(0, 20).map((transaction, index) => (
+                <tr key={index}>
+                  <td><code>{transaction.code}</code></td>
+                  <td>
+                    <span className={`status-badge ${transaction.type === 'sale' ? 'success' : 'primary'}`}>
+                      {transaction.type === 'sale' ? 'Venta' : 'Compra'}
+                    </span>
+                  </td>
+                  <td>{transaction.transactionDate.toLocaleDateString('es-CL')}</td>
+                  <td>{transaction.counterparty.name}</td>
+                  <td>{formatCurrency(transaction.totalAmount)}</td>
+                  <td>{transaction.items.length}</td>
+                  <td>
+                    <span className={`status-badge ${transaction.status === 'completed' ? 'success' : 'warning'}`}>
+                      {transaction.status === 'completed' ? 'Completado' : transaction.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {dataToShow.length > 20 && (
+            <p className="more-records">
+              <em>... y {dataToShow.length - 20} transacciones más</em>
+            </p>
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
   const renderReportsList = () => (
     <div className="reports-list">
@@ -769,7 +849,7 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
                       </button>
                       {report.status === ReportStatus.COMPLETED && (
                         <>
-                          {/* ✅ NUEVO SELECTOR DE FORMATO */}
+                          {/* ✅ SELECTOR DE FORMATO */}
                           <DownloadFormatSelector 
                             report={report}
                             isLoading={downloadingReportId === report.id}
@@ -778,8 +858,8 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
                           <button 
                             className="btn btn-sm btn-secondary"
                             onClick={() => {
-                              // Implementar envío por email
-                              alert('Envío por email en desarrollo');
+                              setEmailReportSelected(report);
+                              setShowEmailModal(true);
                             }}
                             title="Enviar por email"
                           >
@@ -832,7 +912,7 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
 
   return (
     <div className="transaction-reports">
-      {/* ✅ Estilos CSS para el dropdown */}
+      {/* ✅ Estilos CSS para el dropdown (MEJORADOS) */}
       <style>{`
         @keyframes slideDown {
           from {
@@ -843,6 +923,96 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
             opacity: 1;
             transform: translateY(0);
           }
+        }
+        
+        .info-card {
+          border-radius: 8px;
+          padding: 16px;
+        }
+        
+        .download-selector {
+          position: relative;
+          display: inline-block;
+        }
+        
+        .download-options {
+          border: 1px solid #e0e0e0 !important;
+          border-radius: 4px !important;
+          background: white !important;
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
+          overflow: hidden;
+        }
+        
+        .download-option {
+          display: block !important;
+          width: 100% !important;
+          padding: 10px 14px !important;
+          border: none !important;
+          background: white !important;
+          text-align: left !important;
+          cursor: pointer !important;
+          font-size: 0.9em !important;
+          transition: background-color 0.2s ease !important;
+          border-bottom: 1px solid #f0f0f0 !important;
+        }
+        
+        .download-option:last-child {
+          border-bottom: none !important;
+        }
+        
+        .download-option.excel {
+          color: #16a085 !important;
+        }
+        
+        .download-option.pdf {
+          color: #e74c3c !important;
+        }
+        
+        .download-option:hover:not(:disabled) {
+          background-color: #f8f9fa !important;
+        }
+        
+        .download-option:disabled {
+          opacity: 0.5 !important;
+          cursor: not-allowed !important;
+        }
+        
+        /* ✅ Asegurar que el dropdown esté por encima de todo */
+        .download-options {
+          z-index: 999999 !important; /* ✅ Z-index máximo */
+          position: fixed !important;
+        }
+        
+        /* ✅ Asegurar que el overlay también funcione */
+        .download-overlay {
+          z-index: 999998 !important;
+          position: fixed !important;
+        }
+        
+        /* ✅ Mejorar la animación del dropdown */
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        
+        /* ✅ Efecto hover mejorado */
+        .download-option:hover:not(:disabled) {
+          background-color: #f1f3f4 !important;
+          transform: translateX(2px);
+          transition: all 0.15s ease !important;
+        }
+        
+        /* ✅ Efecto de focus para accesibilidad */
+        .download-option:focus {
+          outline: 2px solid #4285f4 !important;
+          outline-offset: -2px !important;
+          background-color: #e8f0fe !important;
         }
       `}</style>
 
@@ -873,6 +1043,7 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         <ReportModal
           title="📊 Generar Nuevo Reporte"
           onClose={() => setShowGenerateModal(false)}
+          size="large"
         >
           {renderGenerateForm()}
           
@@ -896,7 +1067,7 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         </ReportModal>
       )}
 
-      {/* Modal para detalles del reporte */}
+      {/* ✅ Modal para detalles del reporte (TAMAÑO XLARGE) */}
       {selectedReport && showDetailsModal && (
         <ReportModal
           title={`📋 Detalles: ${selectedReport.title}`}
@@ -905,6 +1076,7 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
             setSelectedReport(null);
             setSelectedReportTransactionData([]); // Limpiar datos cargados
           }}
+          size="xlarge"
         >
           <div className="report-details">
             <div className="detail-row">
@@ -1023,6 +1195,16 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
             )}
           </div>
         </ReportModal>
+      )}
+
+      {showEmailModal && emailReportSelected && (
+        <EmailModal
+          report={emailReportSelected}
+          onClose={() => {
+            setShowEmailModal(false);
+            setEmailReportSelected(null);
+          }}
+        />
       )}
     </div>
   );

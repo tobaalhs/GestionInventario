@@ -1,8 +1,50 @@
+// Reglas de Firestore para la colección de tokens de descarga
+// Agregar estas reglas a tu archivo firestore.rules
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+    
+    // Reglas para tokens de descarga
+    match /downloadTokens/{tokenId} {
+      // Permitir lectura solo si:
+      // 1. El usuario está autenticado Y es admin, O
+      // 2. Se está validando un token específico (lectura pública limitada)
+      allow read: if request.auth != null && 
+                     (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+                      resource.data.token == request.query.token);
+      
+      // Permitir escritura solo a usuarios autenticados que sean admins
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Permitir actualización de estadísticas de uso (downloadCount, usedAt, etc.)
+      // sin requerir autenticación cuando se use un token válido
+      allow update: if request.auth == null && 
+                       resource.data.token == request.resource.data.token &&
+                       resource.data.expiresAt.toMillis() > request.time.toMillis() &&
+                       // Solo permitir actualizar estos campos específicos
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['downloadCount', 'usedAt', 'isUsed', 'ipAddress', 'userAgent']);
     }
-  }
-}
+    
+    // Reglas existentes para otras colecciones...
+    
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && 
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    match /reports/{reportId} {
+      // Permitir lectura de reportes con token válido
+      allow read: if request.auth != null || 
+                     exists(/databases/$(database)/documents/downloadTokens/$(request.query.tokenId)) &&
+                     get(/databases/$(database)/documents/downloadTokens/$(request.query.tokenId)).data.reportId == reportId &&
+                     get(/databases/$(database)/documents/downloadTokens/$(request.query.tokenId)).data.expiresAt.toMillis() > request.time.toMillis();
+      
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    match /sales/{saleId} {

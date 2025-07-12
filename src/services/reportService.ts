@@ -184,6 +184,17 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
     console.log('📊 Obteniendo datos de transacciones...');
     console.log('🔍 Filtros recibidos:', filters);
     
+    // ✅ CONVERSIÓN SEGURA DE FILTROS DE FECHA
+    const safeStartDate = safeToDate(filters.startDate);
+    const safeEndDate = safeToDate(filters.endDate);
+    
+    console.log('📅 Fechas convertidas:', {
+      startDate: safeStartDate.toISOString(),
+      endDate: safeEndDate.toISOString(),
+      originalStartDate: filters.startDate,
+      originalEndDate: filters.endDate
+    });
+    
     const transactions: TransactionData[] = [];
 
     // ✅ MÉTODO ALTERNATIVO: Obtener TODOS los documentos y filtrar en memoria
@@ -221,8 +232,16 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
               safeCreatedAt = new Date();
             }
             
-            // ✅ FILTRAR POR FECHA EN MEMORIA (más seguro)
-            if (safeSaleDate >= filters.startDate && safeSaleDate <= filters.endDate) {
+            console.log('🔍 Comparando fechas para venta:', {
+              codigo: saleData.code,
+              safeSaleDate: safeSaleDate.toISOString(),
+              safeStartDate: safeStartDate.toISOString(),
+              safeEndDate: safeEndDate.toISOString(),
+              isInRange: safeSaleDate >= safeStartDate && safeSaleDate <= safeEndDate
+            });
+            
+            // ✅ FILTRAR POR FECHA EN MEMORIA CON FECHAS CONVERTIDAS
+            if (safeSaleDate >= safeStartDate && safeSaleDate <= safeEndDate) {
               
               const transactionData: TransactionData = {
                 id: saleData.id,
@@ -266,6 +285,9 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
               };
 
               transactions.push(transactionData);
+              console.log('✅ Venta incluida:', saleData.code);
+            } else {
+              console.log('❌ Venta excluida por fecha:', saleData.code);
             }
             
           } catch (itemError) {
@@ -310,8 +332,16 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
               safeCreatedAt = new Date();
             }
             
-            // ✅ FILTRAR POR FECHA EN MEMORIA (más seguro)
-            if (safePurchaseDate >= filters.startDate && safePurchaseDate <= filters.endDate) {
+            console.log('🔍 Comparando fechas para compra:', {
+              codigo: purchaseData.code,
+              safePurchaseDate: safePurchaseDate.toISOString(),
+              safeStartDate: safeStartDate.toISOString(),
+              safeEndDate: safeEndDate.toISOString(),
+              isInRange: safePurchaseDate >= safeStartDate && safePurchaseDate <= safeEndDate
+            });
+            
+            // ✅ FILTRAR POR FECHA EN MEMORIA CON FECHAS CONVERTIDAS
+            if (safePurchaseDate >= safeStartDate && safePurchaseDate <= safeEndDate) {
               
               const transactionData: TransactionData = {
                 id: purchaseData.id,
@@ -354,6 +384,9 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
               };
 
               transactions.push(transactionData);
+              console.log('✅ Compra incluida:', purchaseData.code);
+            } else {
+              console.log('❌ Compra excluida por fecha:', purchaseData.code);
             }
             
           } catch (itemError) {
@@ -1061,6 +1094,7 @@ export const searchReports = async (filters: ReportSearchFilters): Promise<Repor
     throw error;
   }
 };
+
 
 /**
  * Actualizar estado del reporte
