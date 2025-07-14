@@ -248,7 +248,6 @@ const UserManagement: React.FC = () => {
               <th>Nombre</th>
               <th>Email</th>
               <th>Rol</th>
-              <th>Fecha Registro</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -298,9 +297,6 @@ const UserManagement: React.FC = () => {
                     <span className={`role-badge ${user.role.toLowerCase()}`}>
                       {user.role === UserRole.ADMIN ? '👑 Administrador' : '👤 Empleado'}
                     </span>
-                  </td>
-                  <td className="date-cell">
-                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString('es-CL') : 'N/A'}
                   </td>
                   <td>
                     <div className="action-buttons">
