@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/GestionInventario/static/css/main.b29be81b.css",
-    "main.js": "/GestionInventario/static/js/main.b33aebec.js",
+    "main.css": "/GestionInventario/static/css/main.1bcf3121.css",
+    "main.js": "/GestionInventario/static/js/main.eab48ac9.js",
     "static/js/487.89e3d0a1.chunk.js": "/GestionInventario/static/js/487.89e3d0a1.chunk.js",
     "static/js/239.1f8ed688.chunk.js": "/GestionInventario/static/js/239.1f8ed688.chunk.js",
     "static/js/977.858d15c9.chunk.js": "/GestionInventario/static/js/977.858d15c9.chunk.js",
@@ -9,8 +9,8 @@
     "static/js/453.7881d95d.chunk.js": "/GestionInventario/static/js/453.7881d95d.chunk.js",
     "static/media/logo-sgi.png": "/GestionInventario/static/media/logo-sgi.9bfff9ca211312e41fd4.png",
     "index.html": "/GestionInventario/index.html",
-    "main.b29be81b.css.map": "/GestionInventario/static/css/main.b29be81b.css.map",
-    "main.b33aebec.js.map": "/GestionInventario/static/js/main.b33aebec.js.map",
+    "main.1bcf3121.css.map": "/GestionInventario/static/css/main.1bcf3121.css.map",
+    "main.eab48ac9.js.map": "/GestionInventario/static/js/main.eab48ac9.js.map",
     "487.89e3d0a1.chunk.js.map": "/GestionInventario/static/js/487.89e3d0a1.chunk.js.map",
     "239.1f8ed688.chunk.js.map": "/GestionInventario/static/js/239.1f8ed688.chunk.js.map",
     "977.858d15c9.chunk.js.map": "/GestionInventario/static/js/977.858d15c9.chunk.js.map",
@@ -18,7 +18,7 @@
     "453.7881d95d.chunk.js.map": "/GestionInventario/static/js/453.7881d95d.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.b29be81b.css",
-    "static/js/main.b33aebec.js"
+    "static/css/main.1bcf3121.css",
+    "static/js/main.eab48ac9.js"
   ]
 }
