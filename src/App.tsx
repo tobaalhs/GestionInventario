@@ -12,6 +12,7 @@ import StockPurchase from './components/purchases/StockPurchase';
 import SaleStock from './components/sales/SaleStock';
 import Reports from './components/reports/Reports';
 import PublicDownloadPage from './components/reports/PublicDownloadPage';
+import FinancialDashboard from './components/finances/FinancialDashboard';
 import './App.css';
 
 // Componente para rutas protegidas que requieren autenticación
@@ -96,6 +97,13 @@ function App() {
             <ProtectedRoute>
               <Reports />
             </ProtectedRoute>
+          } />
+
+          {/* Ruta del Dashboard Financiero - solo para administradores */}
+          <Route path="/finances" element={
+            <AdminRoute>
+              <FinancialDashboard />
+            </AdminRoute>
           } />
           
           {/* Redirección por defecto */}

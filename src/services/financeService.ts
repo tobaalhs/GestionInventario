@@ -1,5 +1,3 @@
-// src/services/financeService.ts
-
 import { 
   collection, 
   doc, 
@@ -209,9 +207,29 @@ const calculateMonthlyPurchases = async (month: Date): Promise<number> => {
  */
 const calculateMonthlySales = async (month: Date): Promise<number> => {
   try {
-    // TODO: Implementar cuando se agregue módulo de ventas
-    // Por ahora retornamos 0
-    return 0;
+    // Obtener todas las ventas completadas
+    const q = query(
+      collection(db, 'sales'),
+      where('status', '==', 'completed')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
+    const endOfMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+    
+    let totalSales = 0;
+    querySnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const saleDate = data.saleDate.toDate();
+      
+      // Filtrar por fecha en el cliente
+      if (saleDate >= startOfMonth && saleDate <= endOfMonth) {
+        totalSales += data.totalAmount || 0;
+      }
+    });
+
+    return totalSales;
   } catch (error) {
     console.error('Error calculando ventas mensuales:', error);
     return 0;
@@ -258,8 +276,29 @@ const calculateYearlyPurchases = async (year: number): Promise<number> => {
  */
 const calculateYearlySales = async (year: number): Promise<number> => {
   try {
-    // TODO: Implementar cuando se agregue módulo de ventas
-    return 0;
+    // Obtener todas las ventas completadas
+    const q = query(
+      collection(db, 'sales'),
+      where('status', '==', 'completed')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31);
+    
+    let totalSales = 0;
+    querySnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const saleDate = data.saleDate.toDate();
+      
+      // Filtrar por año en el cliente
+      if (saleDate >= startOfYear && saleDate <= endOfYear) {
+        totalSales += data.totalAmount || 0;
+      }
+    });
+
+    return totalSales;
   } catch (error) {
     console.error('Error calculando ventas anuales:', error);
     return 0;
@@ -307,8 +346,30 @@ const calculateAverageMonthlyPurchases = async (): Promise<number> => {
  */
 const calculateAverageMonthlySales = async (): Promise<number> => {
   try {
-    // TODO: Implementar cuando se agregue módulo de ventas
-    return 0;
+    const now = new Date();
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(now.getMonth() - 12);
+
+    // Obtener todas las ventas completadas
+    const q = query(
+      collection(db, 'sales'),
+      where('status', '==', 'completed')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    let totalSales = 0;
+    querySnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const saleDate = data.saleDate.toDate();
+      
+      // Filtrar por período en el cliente
+      if (saleDate >= twelveMonthsAgo && saleDate <= now) {
+        totalSales += data.totalAmount || 0;
+      }
+    });
+
+    return totalSales / 12; // Promedio mensual
   } catch (error) {
     console.error('Error calculando promedio mensual de ventas:', error);
     return 0;
@@ -516,6 +577,29 @@ const calculatePurchaseGrowth = async (year: number, month: number): Promise<num
   } catch (error) {
     console.error('Error calculando crecimiento de compras:', error);
     return 0;
+  }
+};
+
+export const getSalesTrend = async (months: number = 12) => {
+  try {
+    const trends = [];
+    const now = new Date();
+
+    for (let i = months - 1; i >= 0; i--) {
+      const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const sales = await calculateMonthlySales(month);
+      
+      trends.push({
+        month: month.toISOString().substring(0, 7), // YYYY-MM
+        amount: sales,
+        formattedMonth: month.toLocaleDateString('es-CL', { year: 'numeric', month: 'long' })
+      });
+    }
+
+    return trends;
+  } catch (error) {
+    console.error('Error obteniendo tendencia de ventas:', error);
+    throw error;
   }
 };
 

@@ -1,0 +1,723 @@
+/* Financial Dashboard Styles - AISLADO SOLO PARA FINANCIAL DASHBOARD */
+.financial-dashboard-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #333;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Loading State - SOLO PARA FINANCIAL DASHBOARD */
+.financial-dashboard-container .loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: white;
+}
+
+.financial-dashboard-container .loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-left: 5px solid white;
+  border-radius: 50%;
+  animation: financial-spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes financial-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Header - SOLO PARA FINANCIAL DASHBOARD */
+.financial-dashboard-container .dashboard-header {
+  background: rgba(140, 45, 236, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.financial-dashboard-container .header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.financial-dashboard-container .back-button {
+  background: #4F46E5;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.financial-dashboard-container .back-button:hover {
+  background: #4338CA;
+  transform: translateY(-1px);
+}
+
+.financial-dashboard-container .dashboard-header h1 {
+  margin: 0;
+  color: #1F2937;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.financial-dashboard-container .header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.financial-dashboard-container .refresh-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.financial-dashboard-container .refresh-button {
+  background: #059669;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.financial-dashboard-container .refresh-button:hover {
+  background: #047857;
+  transform: translateY(-1px);
+}
+
+.financial-dashboard-container .auto-refresh-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #3c3c3c;
+}
+
+.financial-dashboard-container .user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #374151;
+}
+
+.financial-dashboard-container .logout-button {
+  background: #DC2626;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.financial-dashboard-container .logout-button:hover {
+  background: #B91C1C;
+  transform: translateY(-1px);
+}
+
+/* Financial Summary Section */
+.financial-dashboard-container .financial-summary {
+  padding: 2rem;
+}
+
+.financial-dashboard-container .financial-summary h2 {
+  color: rgb(0, 0, 0);
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 300;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.financial-dashboard-container .summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.financial-dashboard-container .summary-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.financial-dashboard-container .summary-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+
+.financial-dashboard-container .card-icon {
+  font-size: 2.5rem;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4F46E5, #7C3AED);
+}
+
+.financial-dashboard-container .money-card .card-icon {
+  background: linear-gradient(135deg, #10B981, #059669);
+}
+
+.financial-dashboard-container .income-card .card-icon {
+  background: linear-gradient(135deg, #059669, #047857);
+}
+
+.financial-dashboard-container .expense-card .card-icon {
+  background: linear-gradient(135deg, #DC2626, #B91C1C);
+}
+
+.financial-dashboard-container .inventory-card .card-icon {
+  background: linear-gradient(135deg, #D97706, #B45309);
+}
+
+.financial-dashboard-container .card-content h3 {
+  margin: 0 0 0.5rem 0;
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.financial-dashboard-container .card-content .amount {
+  margin: 0;
+  color: #1F2937;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.financial-dashboard-container .card-content .subtitle {
+  color: #6B7280;
+  font-size: 0.875rem;
+}
+
+/* Charts Section */
+.financial-dashboard-container .charts-section {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.financial-dashboard-container .charts-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.financial-dashboard-container .chart-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.financial-dashboard-container .chart-card h3 {
+  margin: 0 0 1.5rem 0;
+  color: #1F2937;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Bar Chart - MEJORADO */
+.financial-dashboard-container .bar-chart {
+  display: flex;
+  justify-content: space-around;
+  align-items: end;
+  height: 220px;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+  margin-bottom: 1.5rem;
+  border: 1px solid #E2E8F0;
+  position: relative;
+}
+
+.financial-dashboard-container .bar-chart::before {
+  content: '';
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  height: 1px;
+  background: #E2E8F0;
+  z-index: 1;
+}
+
+.financial-dashboard-container .bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;
+  z-index: 2;
+}
+
+.financial-dashboard-container .bars {
+  display: flex;
+  gap: 0.375rem;
+  align-items: end;
+}
+
+.financial-dashboard-container .bar {
+  width: 24px;
+  min-height: 8px;
+  border-radius: 0.375rem 0.375rem 0 0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.financial-dashboard-container .bar:hover {
+  transform: scaleY(1.08) translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.financial-dashboard-container .income-bar {
+  background: linear-gradient(to top, #059669, #10B981, #34D399);
+  border: 1px solid #047857;
+}
+
+.financial-dashboard-container .expense-bar {
+  background: linear-gradient(to top, #DC2626, #EF4444, #F87171);
+  border: 1px solid #B91C1C;
+}
+
+.financial-dashboard-container .bar-label {
+  font-size: 0.875rem;
+  color: #475569;
+  font-weight: 500;
+  text-align: center;
+  min-width: 60px;
+}
+
+.financial-dashboard-container .chart-legend {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.financial-dashboard-container .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.financial-dashboard-container .legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.financial-dashboard-container .income-color {
+  background: #059669;
+}
+
+.financial-dashboard-container .expense-color {
+  background: #DC2626;
+}
+
+/* Pie Chart - MEJORADO */
+.financial-dashboard-container .pie-chart-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem;
+}
+
+.financial-dashboard-container .pie-chart {
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+.financial-dashboard-container .pie-chart svg {
+  max-width: 100%;
+  height: auto;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
+.financial-dashboard-container .pie-slice {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.financial-dashboard-container .pie-slice:hover {
+  filter: brightness(1.1);
+  transform-origin: center;
+}
+
+.financial-dashboard-container .pie-chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 300px;
+}
+
+.financial-dashboard-container .pie-chart-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid #E2E8F0;
+}
+
+.financial-dashboard-container .pie-chart-legend .legend-item:hover {
+  background: rgba(241, 245, 249, 1);
+  transform: translateX(4px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.financial-dashboard-container .legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.financial-dashboard-container .legend-text {
+  color: #374151;
+  font-weight: 500;
+  flex: 1;
+}
+
+.financial-dashboard-container .no-data {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #6B7280;
+}
+
+.financial-dashboard-container .no-data-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.financial-dashboard-container .no-data p {
+  margin: 0 0 0.75rem 0;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #4B5563;
+}
+
+.financial-dashboard-container .no-data span {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Additional Info - MEJORADO */
+.financial-dashboard-container .additional-info {
+  padding: 0 2rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.financial-dashboard-container .info-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.financial-dashboard-container .info-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  padding: 1.75rem;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.financial-dashboard-container .info-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #4F46E5, #7C3AED);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.financial-dashboard-container .info-card:hover::before {
+  opacity: 1;
+}
+
+.financial-dashboard-container .info-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+
+.financial-dashboard-container .info-card .info-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  opacity: 0.8;
+}
+
+.financial-dashboard-container .info-card h4 {
+  margin: 0 0 1rem 0;
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.financial-dashboard-container .info-card .metric {
+  margin: 0 0 0.5rem 0;
+  color: #1F2937;
+  font-size: 1.75rem;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.financial-dashboard-container .info-card .metric.positive {
+  color: #059669;
+}
+
+.financial-dashboard-container .info-card .metric.negative {
+  color: #DC2626;
+}
+
+.financial-dashboard-container .info-card span {
+  color: #6B7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.financial-dashboard-container .profit-card {
+  background: rgb(224, 239, 169);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* Botón de refresh mejorado */
+.financial-dashboard-container .refresh-button {
+  background: #059669;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.financial-dashboard-container .refresh-button:hover:not(:disabled) {
+  background: #047857;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.financial-dashboard-container .refresh-button.refreshing {
+  background: #6B7280;
+  cursor: not-allowed;
+}
+
+.financial-dashboard-container .refresh-button.refreshing::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: financial-spin 1s linear infinite;
+}
+
+/* Chart cards mejoradas */
+.financial-dashboard-container .chart-card {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(15px);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.financial-dashboard-container .chart-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+}
+
+.financial-dashboard-container .chart-card h3 {
+  margin: 0 0 2rem 0;
+  color: #1F2937;
+  font-size: 1.375rem;
+  font-weight: 700;
+  text-align: center;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.financial-dashboard-container .chart-card h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #4F46E5, #7C3AED);
+  border-radius: 1.5px;
+}
+
+/* Footer */
+.financial-dashboard-container .dashboard-footer {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 1.5rem 2rem;
+  margin-top: 2rem;
+}
+
+.financial-dashboard-container .footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+}
+
+.financial-dashboard-container .last-updated {
+  font-style: italic;
+}
+
+/* Responsive Design - SOLO PARA FINANCIAL DASHBOARD */
+@media (max-width: 1024px) {
+  .financial-dashboard-container .charts-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .financial-dashboard-container .dashboard-header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .financial-dashboard-container .header-right {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .financial-dashboard-container {
+    padding: 0;
+  }
+  
+  .financial-dashboard-container .dashboard-header {
+    padding: 1rem;
+  }
+  
+  .financial-dashboard-container .financial-summary,
+  .financial-dashboard-container .charts-section,
+  .financial-dashboard-container .additional-info {
+    padding: 1rem;
+  }
+  
+  .financial-dashboard-container .summary-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .financial-dashboard-container .bar-chart {
+    height: 150px;
+  }
+  
+  .financial-dashboard-container .info-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .financial-dashboard-container .footer-content {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  
+  .financial-dashboard-container .refresh-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .financial-dashboard-container .dashboard-header h1 {
+    font-size: 1.25rem;
+  }
+  
+  .financial-dashboard-container .financial-summary h2 {
+    font-size: 1.5rem;
+  }
+  
+  .financial-dashboard-container .summary-card {
+    padding: 1rem;
+  }
+  
+  .financial-dashboard-container .card-icon {
+    font-size: 2rem;
+    width: 50px;
+    height: 50px;
+  }
+  
+  .financial-dashboard-container .card-content .amount {
+    font-size: 1.5rem;
+  }
+  
+  .financial-dashboard-container .chart-card {
+    padding: 1rem;
+  }
+  
+  .financial-dashboard-container .bar-chart {
+    height: 120px;
+    padding: 0.5rem;
+  }
+  
+  .financial-dashboard-container .bar-label {
+    font-size: 0.625rem;
+  }
+}

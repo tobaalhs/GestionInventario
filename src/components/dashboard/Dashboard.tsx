@@ -68,6 +68,12 @@ const Dashboard: React.FC = () => {
                 <p>Registrar nuevas compras e ingresos de inventario</p>
                 <Link to="/purchases" className="module-link">Acceder</Link>
               </div>
+
+              <div className="module-card admin-module financial-module">
+                <h3>Visualizar Dinero</h3>
+                <p>Dashboard financiero con gráficos e indicadores del negocio</p>
+                <Link to="/finances" className="module-link">Acceder</Link>
+              </div>
             </>
           )}
         </div>
