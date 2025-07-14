@@ -423,7 +423,7 @@ export const processSaleTransaction = async (saleData: Sale): Promise<void> => {
       
       // Manejar cliente
       if (!finalCustomerId || finalCustomerId.trim() === '') {
-        console.log('Creando nuevo cliente...');
+        console.log('Creando nuevo cliente.');
         finalCustomerId = await createCustomer(saleData.customerInfo);
         console.log('Nuevo cliente creado con ID:', finalCustomerId);
       }
@@ -431,10 +431,14 @@ export const processSaleTransaction = async (saleData: Sale): Promise<void> => {
       // Actualizar el saleData con el ID final del cliente
       saleData.customerId = finalCustomerId;
 
+      // Realizar todas las lecturas primero
+      const productRefs = saleData.items.map(item => doc(db, 'items', item.productId));
+      const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
+
       // Procesar cada producto
-      for (const item of saleData.items) {
-        const productRef = doc(db, 'items', item.productId);
-        const productDoc = await transaction.get(productRef);
+      for (let i = 0; i < saleData.items.length; i++) {
+        const item = saleData.items[i];
+        const productDoc = productDocs[i];
 
         if (!productDoc.exists()) {
           throw new Error(`El producto ${item.productName} no existe`);
@@ -449,7 +453,7 @@ export const processSaleTransaction = async (saleData: Sale): Promise<void> => {
 
         // Actualizar stock del producto
         const newStock = currentStock - item.quantity;
-        transaction.update(productRef, {
+        transaction.update(productDoc.ref, {
           stock: newStock,
           updatedAt: Timestamp.now()
         });
@@ -471,13 +475,13 @@ export const processSaleTransaction = async (saleData: Sale): Promise<void> => {
           comments: `Venta ${saleData.code}`,
           createdAt: Timestamp.now()
         };
-        
+
         const movementRef = doc(collection(db, 'stockMovements'));
         transaction.set(movementRef, movementData);
       }
 
       // Crear la venta
-      console.log('Registrando venta en base de datos...');
+      console.log('Registrando venta en base de datos.');
       await createSale({
         ...saleData,
         customerId: finalCustomerId,
@@ -500,6 +504,7 @@ export const processSaleTransaction = async (saleData: Sale): Promise<void> => {
     throw new Error(`Error procesando venta: ${error instanceof Error ? error.message : 'Error desconocido'}`);
   }
 };
+
 
 /**
  * Obtener todas las ventas con filtros
