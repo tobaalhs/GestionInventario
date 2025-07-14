@@ -39,23 +39,17 @@ import {
 import { Sale } from '../interfaces/Sale';
 import { Purchase } from '../interfaces/Purchase';
 
-/**
- * ✅ Función helper para conversión segura de fechas
- */
 export const safeToDate = (dateValue: any): Date => {
   try {
-    // Si es null o undefined
     if (!dateValue) {
       console.warn('⚠️ Valor de fecha null/undefined, usando fecha actual');
       return new Date();
     }
     
-    // Si ya es un Date válido
     if (dateValue instanceof Date) {
       return isNaN(dateValue.getTime()) ? new Date() : dateValue;
     }
     
-    // Si es un Timestamp de Firestore
     if (typeof dateValue === 'object' && dateValue.toDate && typeof dateValue.toDate === 'function') {
       try {
         const converted = dateValue.toDate();
@@ -66,16 +60,13 @@ export const safeToDate = (dateValue: any): Date => {
       }
     }
     
-    // Si es string o número
     if (typeof dateValue === 'string' || typeof dateValue === 'number') {
       const converted = new Date(dateValue);
       return isNaN(converted.getTime()) ? new Date() : converted;
     }
     
-    // Si es objeto con propiedades de fecha
     if (typeof dateValue === 'object') {
       if (dateValue.seconds && typeof dateValue.seconds === 'number') {
-        // Timestamp manual de Firestore
         const converted = new Date(dateValue.seconds * 1000);
         return isNaN(converted.getTime()) ? new Date() : converted;
       }
@@ -90,9 +81,6 @@ export const safeToDate = (dateValue: any): Date => {
   }
 };
 
-/**
- * Generar código único para reporte
- */
 export const generateReportCode = (type: ReportType): string => {
   const now = new Date();
   const year = now.getFullYear();
@@ -104,14 +92,10 @@ export const generateReportCode = (type: ReportType): string => {
   return `REPORT-${typePrefix}-${year}${month}${day}-${timestamp}`;
 };
 
-/**
- * Validar filtros de reporte
- */
 export const validateReportFilters = (filters: TransactionFilters): ReportFilterValidation => {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Validar fechas
   if (!filters.startDate || !filters.endDate) {
     errors.push('Las fechas de inicio y fin son obligatorias');
   } else {
@@ -135,12 +119,10 @@ export const validateReportFilters = (filters: TransactionFilters): ReportFilter
     }
   }
 
-  // Validar tipos de transacción
   if (!filters.includeTypes || filters.includeTypes.length === 0) {
     errors.push('Debe incluir al menos un tipo de transacción');
   }
 
-  // Validar montos
   if (filters.minAmount !== undefined && filters.maxAmount !== undefined) {
     if (filters.minAmount > filters.maxAmount) {
       errors.push('El monto mínimo no puede ser mayor al monto máximo');
@@ -151,15 +133,13 @@ export const validateReportFilters = (filters: TransactionFilters): ReportFilter
     errors.push('El monto mínimo no puede ser negativo');
   }
 
-  // Estimar cantidad de registros (aproximado)
   let estimatedRecords = 0;
   if (filters.startDate && filters.endDate) {
     const daysDiff = Math.ceil((filters.endDate.getTime() - filters.startDate.getTime()) / (1000 * 3600 * 24));
-    estimatedRecords = daysDiff * 10; // Estimación aproximada de 10 transacciones por día
+    estimatedRecords = daysDiff * 10;
   }
 
-  // Estimar tiempo de procesamiento (aproximado)
-  let estimatedProcessingTime = Math.max(estimatedRecords / 100, 5); // Mínimo 5 segundos
+  let estimatedProcessingTime = Math.max(estimatedRecords / 100, 5);
 
   if (estimatedRecords > 10000) {
     warnings.push('El reporte contiene muchos registros y puede tardar varios minutos en generarse');
@@ -176,15 +156,46 @@ export const validateReportFilters = (filters: TransactionFilters): ReportFilter
   };
 };
 
-/**
- * ✅ Obtener datos de transacciones basado en filtros (CORREGIDO)
- */
+const cleanTransactionObject = (obj: any): any => {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => cleanTransactionObject(item)).filter(item => item !== null);
+  }
+  
+  if (typeof obj === 'object' && !(obj instanceof Date)) {
+    const cleaned: any = {};
+    
+    Object.keys(obj).forEach(key => {
+      const value = obj[key];
+      
+      if (value !== undefined && value !== null) {
+        if (typeof value === 'string' && value.trim() === '') {
+          cleaned[key] = '';
+        } else if (typeof value === 'object' && !(value instanceof Date)) {
+          const cleanedNested = cleanTransactionObject(value);
+          if (cleanedNested !== null && Object.keys(cleanedNested).length > 0) {
+            cleaned[key] = cleanedNested;
+          }
+        } else {
+          cleaned[key] = value;
+        }
+      }
+    });
+    
+    return Object.keys(cleaned).length > 0 ? cleaned : null;
+  }
+  
+  return obj;
+};
+
 export const getTransactionData = async (filters: TransactionFilters): Promise<TransactionData[]> => {
   try {
     console.log('📊 Obteniendo datos de transacciones...');
     console.log('🔍 Filtros recibidos:', filters);
     
-    // ✅ CONVERSIÓN SEGURA DE FILTROS DE FECHA
     const safeStartDate = safeToDate(filters.startDate);
     const safeEndDate = safeToDate(filters.endDate);
     
@@ -197,15 +208,10 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
     
     const transactions: TransactionData[] = [];
 
-    // ✅ MÉTODO ALTERNATIVO: Obtener TODOS los documentos y filtrar en memoria
-    // Esto evita problemas con queries complejos de Firestore
-    
-    // Obtener ventas si están incluidas
     if (filters.includeTypes.includes('sale')) {
       console.log('📈 Cargando TODAS las ventas...');
       
       try {
-        // Query simple sin filtros de fecha para evitar errores
         const salesQuery = query(
           collection(db, 'sales'),
           orderBy('saleDate', 'desc')
@@ -219,7 +225,6 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
             const saleData = doc.data() as Sale;
             saleData.id = doc.id;
             
-            // ✅ CONVERSIÓN SEGURA DE FECHAS
             let safeSaleDate: Date;
             let safeCreatedAt: Date;
             
@@ -232,17 +237,7 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
               safeCreatedAt = new Date();
             }
             
-            console.log('🔍 Comparando fechas para venta:', {
-              codigo: saleData.code,
-              safeSaleDate: safeSaleDate.toISOString(),
-              safeStartDate: safeStartDate.toISOString(),
-              safeEndDate: safeEndDate.toISOString(),
-              isInRange: safeSaleDate >= safeStartDate && safeSaleDate <= safeEndDate
-            });
-            
-            // ✅ FILTRAR POR FECHA EN MEMORIA CON FECHAS CONVERTIDAS
             if (safeSaleDate >= safeStartDate && safeSaleDate <= safeEndDate) {
-              
               const transactionData: TransactionData = {
                 id: saleData.id,
                 code: saleData.code || `SALE-${doc.id}`,
@@ -285,9 +280,6 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
               };
 
               transactions.push(transactionData);
-              console.log('✅ Venta incluida:', saleData.code);
-            } else {
-              console.log('❌ Venta excluida por fecha:', saleData.code);
             }
             
           } catch (itemError) {
@@ -300,12 +292,10 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
       }
     }
 
-    // Obtener compras si están incluidas
     if (filters.includeTypes.includes('purchase')) {
       console.log('📉 Cargando TODAS las compras...');
       
       try {
-        // Query simple sin filtros de fecha para evitar errores
         const purchasesQuery = query(
           collection(db, 'purchases'),
           orderBy('purchaseDate', 'desc')
@@ -319,7 +309,6 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
             const purchaseData = doc.data() as Purchase;
             purchaseData.id = doc.id;
             
-            // ✅ CONVERSIÓN SEGURA DE FECHAS
             let safePurchaseDate: Date;
             let safeCreatedAt: Date;
             
@@ -332,48 +321,44 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
               safeCreatedAt = new Date();
             }
             
-            console.log('🔍 Comparando fechas para compra:', {
-              codigo: purchaseData.code,
-              safePurchaseDate: safePurchaseDate.toISOString(),
-              safeStartDate: safeStartDate.toISOString(),
-              safeEndDate: safeEndDate.toISOString(),
-              isInRange: safePurchaseDate >= safeStartDate && safePurchaseDate <= safeEndDate
-            });
-            
-            // ✅ FILTRAR POR FECHA EN MEMORIA CON FECHAS CONVERTIDAS
             if (safePurchaseDate >= safeStartDate && safePurchaseDate <= safeEndDate) {
-              
+              const cleanedCounterparty = {
+                id: purchaseData.supplierId || '',
+                rut: purchaseData.supplierInfo?.rut || '',
+                name: purchaseData.supplierInfo?.name || 'Proveedor sin nombre',
+                contact: purchaseData.supplierInfo?.contact || '',
+                email: purchaseData.supplierInfo?.email || '',
+                phone: purchaseData.supplierInfo?.phone || '',
+                address: purchaseData.supplierInfo?.address || '',
+                type: 'supplier' as const
+              };
+
+              const cleanedUser = {
+                id: purchaseData.userId || '',
+                email: purchaseData.userEmail || '',
+                name: purchaseData.userEmail?.split('@')[0] || 'Usuario',
+                role: 'admin'
+              };
+
+              const cleanedItems = (purchaseData.items || []).map(item => ({
+                productId: item.productId || '',
+                productCode: item.productCode || '',
+                productName: item.productName || 'Producto sin nombre',
+                category: item.category || 'Sin categoría',
+                quantity: item.quantity || 0,
+                unitPrice: item.unitPrice || 0,
+                totalPrice: item.totalPrice || 0
+              }));
+
               const transactionData: TransactionData = {
                 id: purchaseData.id,
                 code: purchaseData.code || `PURCHASE-${doc.id}`,
                 type: 'purchase',
                 transactionDate: safePurchaseDate,
                 createdAt: safeCreatedAt,
-                counterparty: {
-                  id: purchaseData.supplierId || '',
-                  rut: purchaseData.supplierInfo?.rut || '',
-                  name: purchaseData.supplierInfo?.name || 'Proveedor sin nombre',
-                  contact: purchaseData.supplierInfo?.contact || '',
-                  email: purchaseData.supplierInfo?.email || '',
-                  phone: purchaseData.supplierInfo?.phone || '',
-                  address: purchaseData.supplierInfo?.address || '',
-                  type: 'supplier'
-                },
-                user: {
-                  id: purchaseData.userId || '',
-                  email: purchaseData.userEmail || '',
-                  name: purchaseData.userEmail?.split('@')[0] || 'Usuario',
-                  role: 'admin'
-                },
-                items: (purchaseData.items || []).map(item => ({
-                  productId: item.productId || '',
-                  productCode: item.productCode || '',
-                  productName: item.productName || 'Producto sin nombre',
-                  category: item.category || 'Sin categoría',
-                  quantity: item.quantity || 0,
-                  unitPrice: item.unitPrice || 0,
-                  totalPrice: item.totalPrice || 0
-                })),
+                counterparty: cleanedCounterparty,
+                user: cleanedUser,
+                items: cleanedItems,
                 subtotal: purchaseData.totalAmount || 0,
                 taxes: 0,
                 discount: 0,
@@ -384,9 +369,6 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
               };
 
               transactions.push(transactionData);
-              console.log('✅ Compra incluida:', purchaseData.code);
-            } else {
-              console.log('❌ Compra excluida por fecha:', purchaseData.code);
             }
             
           } catch (itemError) {
@@ -401,10 +383,8 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
 
     console.log(`📊 Total de transacciones después de filtro de fecha: ${transactions.length}`);
 
-    // Aplicar filtros adicionales
     let filteredTransactions = transactions;
 
-    // Filtro por término de búsqueda
     if (filters.searchTerm) {
       const searchTerm = filters.searchTerm.toLowerCase();
       filteredTransactions = filteredTransactions.filter(transaction =>
@@ -419,7 +399,6 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
       );
     }
 
-    // Filtros de monto
     if (filters.minAmount !== undefined) {
       filteredTransactions = filteredTransactions.filter(t => t.totalAmount >= filters.minAmount!);
     }
@@ -427,10 +406,8 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
       filteredTransactions = filteredTransactions.filter(t => t.totalAmount <= filters.maxAmount!);
     }
 
-    // ✅ ORDENAMIENTO SIMPLE Y SEGURO
     try {
       filteredTransactions.sort((a, b) => {
-        // Usar getTime() directamente ya que sabemos que son Date válidos
         return b.transactionDate.getTime() - a.transactionDate.getTime();
       });
     } catch (sortError) {
@@ -446,30 +423,25 @@ export const getTransactionData = async (filters: TransactionFilters): Promise<T
   }
 };
 
-/**
- * Calcular resumen del reporte
- */
 export const calculateReportSummary = (transactions: TransactionData[]): ReportSummary => {
   const totalTransactions = transactions.length;
   const totalItems = transactions.reduce((sum, t) => sum + t.items.length, 0);
   const totalQuantity = transactions.reduce((sum, t) => sum + t.totalQuantity, 0);
   const totalAmount = transactions.reduce((sum, t) => sum + t.totalAmount, 0);
   
-  // Calcular costos y ganancias (estimado)
   const totalCost = transactions.reduce((sum, t) => {
     if (t.type === 'purchase') return sum + t.totalAmount;
-    return sum + (t.totalAmount * 0.7); // Estimación del 70% como costo para ventas
+    return sum + (t.totalAmount * 0.7);
   }, 0);
   
   const totalProfit = transactions.reduce((sum, t) => {
-    if (t.type === 'sale') return sum + (t.totalAmount * 0.3); // Estimación del 30% de ganancia
+    if (t.type === 'sale') return sum + (t.totalAmount * 0.3);
     return sum;
   }, 0);
 
   const averageTransactionAmount = totalTransactions > 0 ? totalAmount / totalTransactions : 0;
   const averageMargin = totalAmount > 0 ? (totalProfit / totalAmount) * 100 : 0;
 
-  // Separar por tipo
   const sales = transactions.filter(t => t.type === 'sale');
   const purchases = transactions.filter(t => t.type === 'purchase');
 
@@ -489,7 +461,6 @@ export const calculateReportSummary = (transactions: TransactionData[]): ReportS
     topTransaction: purchases.length > 0 ? purchases.reduce((max, p) => p.totalAmount > max.totalAmount ? p : max) : null
   };
 
-  // Calcular tendencias
   const trends = calculateReportTrends(transactions);
 
   return {
@@ -507,9 +478,6 @@ export const calculateReportSummary = (transactions: TransactionData[]): ReportS
   };
 };
 
-/**
- * Calcular tendencias del reporte
- */
 export const calculateReportTrends = (transactions: TransactionData[]): ReportTrends => {
   if (transactions.length === 0) {
     return {
@@ -523,7 +491,6 @@ export const calculateReportTrends = (transactions: TransactionData[]): ReportTr
     };
   }
 
-  // Agrupar por días
   const dailyData = new Map<string, { transactions: number; amount: number; quantity: number }>();
   
   transactions.forEach(transaction => {
@@ -540,17 +507,14 @@ export const calculateReportTrends = (transactions: TransactionData[]): ReportTr
     ...data
   }));
 
-  // Calcular promedios
   const totalDays = dailyEntries.length;
   const dailyAverage = totalDays > 0 ? transactions.reduce((sum, t) => sum + t.totalAmount, 0) / totalDays : 0;
   const weeklyAverage = dailyAverage * 7;
   const monthlyAverage = dailyAverage * 30;
 
-  // Encontrar el día con más actividad
   const topDay = dailyEntries.length > 0 ? 
     dailyEntries.reduce((max, day) => day.amount > max.amount ? day : max) : null;
 
-  // Calcular tasa de crecimiento (simplificado)
   let growthRate = 0;
   if (dailyEntries.length >= 2) {
     const firstHalf = dailyEntries.slice(0, Math.floor(dailyEntries.length / 2));
@@ -569,17 +533,13 @@ export const calculateReportTrends = (transactions: TransactionData[]): ReportTr
     weeklyAverage,
     monthlyAverage,
     growthRate,
-    seasonalityFactor: 1, // Placeholder
+    seasonalityFactor: 1,
     topDay,
-    topWeek: null // Placeholder
+    topWeek: null
   };
 };
 
-/**
- * Generar estadísticas detalladas del reporte
- */
 export const generateReportStatistics = (transactions: TransactionData[]): ReportStatistics => {
-  // Top clientes
   const customerStats = new Map<string, CustomerStat>();
   const supplierStats = new Map<string, SupplierStat>();
   const productStats = new Map<string, ProductStat>();
@@ -587,7 +547,6 @@ export const generateReportStatistics = (transactions: TransactionData[]): Repor
   const userStats = new Map<string, UserStat>();
 
   transactions.forEach(transaction => {
-    // Estadísticas de clientes (solo para ventas)
     if (transaction.type === 'sale') {
       const customerId = transaction.counterparty.id;
       const existing = customerStats.get(customerId) || {
@@ -613,7 +572,6 @@ export const generateReportStatistics = (transactions: TransactionData[]): Repor
       customerStats.set(customerId, existing);
     }
 
-    // Estadísticas de proveedores (solo para compras)
     if (transaction.type === 'purchase') {
       const supplierId = transaction.counterparty.id;
       const existing = supplierStats.get(supplierId) || {
@@ -639,7 +597,6 @@ export const generateReportStatistics = (transactions: TransactionData[]): Repor
       supplierStats.set(supplierId, existing);
     }
 
-    // Estadísticas de usuarios
     const userId = transaction.user.id;
     const userExisting = userStats.get(userId) || {
       userId,
@@ -661,7 +618,6 @@ export const generateReportStatistics = (transactions: TransactionData[]): Repor
     
     userStats.set(userId, userExisting);
 
-    // Estadísticas de productos
     transaction.items.forEach(item => {
       const productId = item.productId;
       const existing = productStats.get(productId) || {
@@ -678,7 +634,7 @@ export const generateReportStatistics = (transactions: TransactionData[]): Repor
         averageSellingPrice: 0,
         averageCost: 0,
         averageMargin: 0,
-        currentStock: 0 // Se debería obtener desde inventario
+        currentStock: 0
       };
 
       if (transaction.type === 'sale') {
@@ -695,7 +651,6 @@ export const generateReportStatistics = (transactions: TransactionData[]): Repor
 
       productStats.set(productId, existing);
 
-      // Estadísticas de categorías
       const category = item.category;
       const categoryExisting = categoryStats.get(category) || {
         category,
@@ -716,7 +671,6 @@ export const generateReportStatistics = (transactions: TransactionData[]): Repor
     });
   });
 
-  // Calcular porcentajes
   const totalTransactionAmount = transactions.reduce((sum, t) => sum + t.totalAmount, 0);
   
   customerStats.forEach(stat => {
@@ -735,7 +689,6 @@ export const generateReportStatistics = (transactions: TransactionData[]): Repor
     stat.percentage = totalTransactionAmount > 0 ? (stat.totalAmount / totalTransactionAmount) * 100 : 0;
   });
 
-  // Convertir a arrays ordenados
   const topCustomers = Array.from(customerStats.values())
     .sort((a, b) => b.totalAmount - a.totalAmount)
     .slice(0, 10);
@@ -756,11 +709,10 @@ export const generateReportStatistics = (transactions: TransactionData[]): Repor
     .sort((a, b) => b.totalAmount - a.totalAmount)
     .slice(0, 10);
 
-  // KPIs básicos (placeholder)
   const kpis: ReportKPIs = {
     totalRevenue: transactions.filter(t => t.type === 'sale').reduce((sum, t) => sum + t.totalAmount, 0),
     averageOrderValue: totalTransactionAmount / Math.max(transactions.length, 1),
-    transactionsPerDay: 0, // Se calcularía con más datos
+    transactionsPerDay: 0,
     customerAcquisitionRate: 0,
     customerRetentionRate: 0,
     inventoryTurnover: 0,
@@ -779,9 +731,9 @@ export const generateReportStatistics = (transactions: TransactionData[]): Repor
     topProducts,
     topCategories,
     topUsers,
-    hourlyDistribution: [], // Placeholder
-    weeklyDistribution: [], // Placeholder
-    monthlyComparison: [], // Placeholder
+    hourlyDistribution: [],
+    weeklyDistribution: [],
+    monthlyComparison: [],
     profitabilityAnalysis: {
       totalRevenue: kpis.totalRevenue,
       totalCost: 0,
@@ -792,14 +744,11 @@ export const generateReportStatistics = (transactions: TransactionData[]): Repor
       breakdownByProduct: [],
       breakdownByCategory: []
     },
-    paymentMethodAnalysis: [], // Placeholder
+    paymentMethodAnalysis: [],
     kpis
   };
 };
 
-/**
- * ✅ Crear un nuevo reporte (OPTIMIZADO - no guarda transactionData)
- */
 export const createReport = async (
   request: ReportGenerationRequest,
   userId: string,
@@ -808,65 +757,59 @@ export const createReport = async (
   try {
     console.log('📊 Iniciando generación de reporte...');
 
-    // Validar filtros
     const validation = validateReportFilters(request.filters);
     if (!validation.isValid) {
       throw new Error(`Filtros inválidos: ${validation.errors.join(', ')}`);
     }
 
-    // Generar código único
     const code = generateReportCode(request.type);
-
-    // Obtener datos de transacciones
     const transactionData = await getTransactionData(request.filters);
-
-    // Calcular resumen
     const summary = calculateReportSummary(transactionData);
-
-    // Generar estadísticas
     const statistics = generateReportStatistics(transactionData);
 
-    // ✅ GUARDAR DATOS LIMITADOS CON ESTRUCTURA COMPLETA
-    const limitedTransactionData: TransactionData[] = transactionData.slice(0, 50).map(transaction => ({
-      id: transaction.id,
-      code: transaction.code,
-      type: transaction.type,
-      transactionDate: transaction.transactionDate,
-      createdAt: transaction.createdAt, // ✅ Requerido
-      counterparty: {
-        id: transaction.counterparty.id,
-        rut: transaction.counterparty.rut,
-        name: transaction.counterparty.name,
-        contact: transaction.counterparty.contact || '',
-        email: transaction.counterparty.email || '',
-        phone: transaction.counterparty.phone || '',
-        address: transaction.counterparty.address || '',
-        type: transaction.counterparty.type
-      },
-      user: {
-        id: transaction.user.id,
-        email: transaction.user.email,
-        name: transaction.user.name,
-        role: transaction.user.role
-      },
-      items: transaction.items.map(item => ({
-        productId: item.productId,
-        productCode: item.productCode,
-        productName: item.productName,
-        category: item.category,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice
-      })),
-      subtotal: transaction.subtotal, // ✅ Requerido
-      taxes: transaction.taxes, // ✅ Requerido
-      discount: transaction.discount, // ✅ Requerido
-      totalAmount: transaction.totalAmount,
-      totalQuantity: transaction.totalQuantity,
-      paymentMethod: transaction.paymentMethod,
-      comments: transaction.comments,
-      status: transaction.status
-    }));
+    const limitedTransactionData: TransactionData[] = transactionData.slice(0, 50).map(transaction => {
+      const cleanedTransaction = cleanTransactionObject(transaction);
+      return {
+        id: cleanedTransaction.id || '',
+        code: cleanedTransaction.code || '',
+        type: cleanedTransaction.type || 'sale',
+        transactionDate: cleanedTransaction.transactionDate || new Date(),
+        createdAt: cleanedTransaction.createdAt || new Date(),
+        counterparty: {
+          id: cleanedTransaction.counterparty?.id || '',
+          rut: cleanedTransaction.counterparty?.rut || '',
+          name: cleanedTransaction.counterparty?.name || '',
+          contact: cleanedTransaction.counterparty?.contact || '',
+          email: cleanedTransaction.counterparty?.email || '',
+          phone: cleanedTransaction.counterparty?.phone || '',
+          address: cleanedTransaction.counterparty?.address || '',
+          type: cleanedTransaction.counterparty?.type || 'customer'
+        },
+        user: {
+          id: cleanedTransaction.user?.id || '',
+          email: cleanedTransaction.user?.email || '',
+          name: cleanedTransaction.user?.name || '',
+          role: cleanedTransaction.user?.role || 'admin'
+        },
+        items: (cleanedTransaction.items || []).map((item: any) => ({
+          productId: item.productId || '',
+          productCode: item.productCode || '',
+          productName: item.productName || '',
+          category: item.category || '',
+          quantity: item.quantity || 0,
+          unitPrice: item.unitPrice || 0,
+          totalPrice: item.totalPrice || 0
+        })),
+        subtotal: cleanedTransaction.subtotal || 0,
+        taxes: cleanedTransaction.taxes || 0,
+        discount: cleanedTransaction.discount || 0,
+        totalAmount: cleanedTransaction.totalAmount || 0,
+        totalQuantity: cleanedTransaction.totalQuantity || 0,
+        paymentMethod: cleanedTransaction.paymentMethod || '',
+        comments: cleanedTransaction.comments || '',
+        status: cleanedTransaction.status || 'completed'
+      };
+    });
 
     const reportData: Omit<TransactionReport, 'id'> = {
       code,
@@ -875,7 +818,7 @@ export const createReport = async (
       description: request.description,
       periodStart: request.filters.startDate,
       periodEnd: request.filters.endDate,
-      transactionData: limitedTransactionData, // ✅ Ahora tiene estructura completa
+      transactionData: limitedTransactionData,
       summary,
       generatedBy: userId,
       generatedByName: userEmail.split('@')[0],
@@ -888,20 +831,22 @@ export const createReport = async (
       updatedAt: new Date()
     };
 
-    // Guardar en Firestore
-    const docRef = await addDoc(collection(db, 'reports'), {
-      ...reportData,
-      periodStart: Timestamp.fromDate(reportData.periodStart),
-      periodEnd: Timestamp.fromDate(reportData.periodEnd),
-      generatedAt: Timestamp.fromDate(reportData.generatedAt),
-      updatedAt: Timestamp.fromDate(reportData.updatedAt),
-      // ✅ Convertir fechas en los datos limitados
+    const cleanedReportData = cleanTransactionObject(reportData);
+
+    const firestoreData = {
+      ...cleanedReportData,
+      periodStart: Timestamp.fromDate(cleanedReportData.periodStart),
+      periodEnd: Timestamp.fromDate(cleanedReportData.periodEnd),
+      generatedAt: Timestamp.fromDate(cleanedReportData.generatedAt),
+      updatedAt: Timestamp.fromDate(cleanedReportData.updatedAt),
       transactionData: limitedTransactionData.map(transaction => ({
-        ...transaction,
+        ...cleanTransactionObject(transaction),
         transactionDate: Timestamp.fromDate(transaction.transactionDate),
         createdAt: Timestamp.fromDate(transaction.createdAt)
       }))
-    });
+    };
+
+    const docRef = await addDoc(collection(db, 'reports'), firestoreData);
 
     console.log('✅ Reporte creado exitosamente:', docRef.id);
     return docRef.id;
@@ -912,10 +857,6 @@ export const createReport = async (
   }
 };
 
-
-/**
- * Obtener reporte por ID
- */
 export const getReportById = async (id: string): Promise<TransactionReport | null> => {
   try {
     const docRef = doc(db, 'reports', id);
@@ -924,7 +865,6 @@ export const getReportById = async (id: string): Promise<TransactionReport | nul
     if (docSnap.exists()) {
       const data = docSnap.data();
       
-      // Crear objeto completo con todas las propiedades requeridas
       const report: TransactionReport = {
         id: docSnap.id,
         code: data.code || '',
@@ -933,7 +873,7 @@ export const getReportById = async (id: string): Promise<TransactionReport | nul
         description: data.description,
         periodStart: safeToDate(data.periodStart),
         periodEnd: safeToDate(data.periodEnd),
-        transactionData: [], // Los datos se cargarán dinámicamente cuando sea necesario
+        transactionData: [],
         summary: data.summary || {
           totalTransactions: 0,
           totalItems: 0,
@@ -978,15 +918,11 @@ export const getReportById = async (id: string): Promise<TransactionReport | nul
   }
 };
 
-/**
- * Buscar reportes con filtros
- */
 export const searchReports = async (filters: ReportSearchFilters): Promise<ReportSearchResult> => {
   try {
     let q = collection(db, 'reports');
     let queryConstraints: any[] = [];
 
-    // Aplicar filtros
     if (filters.types && filters.types.length > 0) {
       queryConstraints.push(where('type', 'in', filters.types));
     }
@@ -1007,12 +943,10 @@ export const searchReports = async (filters: ReportSearchFilters): Promise<Repor
       queryConstraints.push(where('generatedAt', '<=', Timestamp.fromDate(filters.endDate)));
     }
 
-    // Ordenamiento
     const sortField = filters.sortBy || 'generatedAt';
     const sortDirection = filters.sortOrder || 'desc';
     queryConstraints.push(orderBy(sortField, sortDirection));
 
-    // Paginación
     const pageSize = filters.pageSize || 20;
     queryConstraints.push(limit(pageSize));
 
@@ -1029,7 +963,7 @@ export const searchReports = async (filters: ReportSearchFilters): Promise<Repor
         description: data.description,
         periodStart: safeToDate(data.periodStart),
         periodEnd: safeToDate(data.periodEnd),
-        transactionData: [], // Simplificar para la lista
+        transactionData: [],
         summary: data.summary || {
           totalTransactions: 0,
           totalItems: 0,
@@ -1061,7 +995,6 @@ export const searchReports = async (filters: ReportSearchFilters): Promise<Repor
       } as TransactionReport;
     });
 
-    // Filtro adicional por término de búsqueda
     let filteredReports = reports;
     if (filters.searchTerm) {
       const searchTerm = filters.searchTerm.toLowerCase();
@@ -1072,7 +1005,6 @@ export const searchReports = async (filters: ReportSearchFilters): Promise<Repor
       );
     }
 
-    // Calcular paginación
     const totalCount = filteredReports.length;
     const currentPage = filters.page || 1;
     const totalPages = Math.ceil(totalCount / pageSize);
@@ -1095,10 +1027,6 @@ export const searchReports = async (filters: ReportSearchFilters): Promise<Repor
   }
 };
 
-
-/**
- * Actualizar estado del reporte
- */
 export const updateReportStatus = async (
   reportId: string, 
   status: ReportStatus, 
@@ -1122,9 +1050,6 @@ export const updateReportStatus = async (
   }
 };
 
-/**
- * Eliminar reporte
- */
 export const deleteReport = async (reportId: string): Promise<void> => {
   try {
     const docRef = doc(db, 'reports', reportId);
@@ -1136,9 +1061,6 @@ export const deleteReport = async (reportId: string): Promise<void> => {
   }
 };
 
-/**
- * ✅ Obtener reportes recientes (OPTIMIZADO)
- */
 export const getRecentReports = async (limitCount: number = 10): Promise<TransactionReport[]> => {
   try {
     const q = query(
@@ -1152,7 +1074,6 @@ export const getRecentReports = async (limitCount: number = 10): Promise<Transac
     return querySnapshot.docs.map(doc => {
       const data = doc.data();
       
-      // ✅ Convertir datos de transacciones si existen (estructura completa)
       let processedTransactionData: TransactionData[] = [];
       
       if (data.transactionData && Array.isArray(data.transactionData)) {
@@ -1206,7 +1127,7 @@ export const getRecentReports = async (limitCount: number = 10): Promise<Transac
         description: data.description,
         periodStart: safeToDate(data.periodStart),
         periodEnd: safeToDate(data.periodEnd),
-        transactionData: processedTransactionData, // ✅ Datos guardados completos
+        transactionData: processedTransactionData,
         summary: data.summary || {
           totalTransactions: 0,
           totalItems: 0,

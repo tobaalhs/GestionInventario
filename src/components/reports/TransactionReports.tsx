@@ -9,6 +9,13 @@ import {
   TransactionFilters,
   ReportGenerationRequest
 } from '../../interfaces/Report';
+import {
+  InventoryExportOptions,
+  getInventoryData,
+  exportInventoryToExcel,
+  getAvailableCategories,
+  getAvailableSuppliers
+} from '../../services/inventoryExportService';
 import ReportModal from './ReportModal';
 
 interface TransactionReportsProps {}
@@ -31,23 +38,31 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
     clearError
   } = useReports();
 
-  // Estados del formulario de generación
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState<TransactionReport | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  
-  // Estados para carga dinámica de datos de transacciones
   const [loadingTransactionData, setLoadingTransactionData] = useState(false);
   const [selectedReportTransactionData, setSelectedReportTransactionData] = useState<any[]>([]);
-  
-  // ✅ Estado para controlar la descarga
   const [downloadingReportId, setDownloadingReportId] = useState<string | null>(null);
-
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailReportSelected, setEmailReportSelected] = useState<TransactionReport | null>(null);
-
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [downloadReportSelected, setDownloadReportSelected] = useState<TransactionReport | null>(null);
   
-  // ✅ Estados del formulario (SIMPLIFICADOS)
+  // Estados para exportación de inventario
+  const [showInventoryExportModal, setShowInventoryExportModal] = useState(false);
+  const [inventoryExporting, setInventoryExporting] = useState(false);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availableSuppliers, setAvailableSuppliers] = useState<{ id: string; name: string }[]>([]);
+  const [inventoryExportOptions, setInventoryExportOptions] = useState<InventoryExportOptions>({
+    includeInactiveProducts: false,
+    includeProductDetails: true,
+    includeSummary: true,
+    includeSuppliers: true,
+    includeCategories: true,
+    stockFilter: 'all'
+  });
+
   const [reportForm, setReportForm] = useState({
     type: ReportType.SALES,
     title: '',
@@ -59,8 +74,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
     })(),
     endDate: new Date().toISOString().split('T')[0],
     includeTypes: ['sale'] as ('sale' | 'purchase')[],
-    // ❌ ELIMINADO: searchTerm
-    // ✅ SIMPLIFICADO: Solo una opción para estadísticas
     includeDetailedData: true
   });
 
@@ -76,7 +89,40 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
 
   useEffect(() => {
     loadRecentReports();
+    loadInventoryExportData();
   }, [loadRecentReports]);
+
+  const loadInventoryExportData = async () => {
+    try {
+      const [categories, suppliers] = await Promise.all([
+        getAvailableCategories(),
+        getAvailableSuppliers()
+      ]);
+      setAvailableCategories(categories);
+      setAvailableSuppliers(suppliers);
+    } catch (error) {
+      console.error('Error cargando datos para exportación:', error);
+    }
+  };
+
+  const handleInventoryExport = async () => {
+    try {
+      setInventoryExporting(true);
+      console.log('📦 Iniciando exportación de inventario...');
+
+      const inventoryData = await getInventoryData(inventoryExportOptions);
+      await exportInventoryToExcel(inventoryData, inventoryExportOptions);
+
+      setShowInventoryExportModal(false);
+      alert('✅ Inventario exportado exitosamente');
+
+    } catch (error) {
+      console.error('❌ Error exportando inventario:', error);
+      alert('Error al exportar inventario: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    } finally {
+      setInventoryExporting(false);
+    }
+  };
 
   useEffect(() => {
     if (error) {
@@ -87,48 +133,11 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
     }
   }, [error, clearError]);
 
-  // Actualizar estimación cuando cambian los filtros
   useEffect(() => {
     if (reportForm.startDate && reportForm.endDate) {
       updateEstimation();
     }
   }, [reportForm.startDate, reportForm.endDate, reportForm.includeTypes]);
-
-  // ✅ Hook mejorado para cerrar dropdowns al hacer clic fuera
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      // ✅ Cerrar todos los dropdowns abiertos
-      const dropdowns = document.querySelectorAll('[data-dropdown="true"]');
-      let shouldClose = true;
-      
-      dropdowns.forEach(dropdown => {
-        const parent = dropdown.closest('.download-selector');
-        if (parent && parent.contains(event.target as Node)) {
-          shouldClose = false;
-        }
-      });
-      
-      if (shouldClose) {
-        // ✅ Forzar cierre de todos los dropdowns
-        setDownloadingReportId(prev => prev); // Trigger re-render
-      }
-    };
-
-    const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        // ✅ Cerrar dropdowns con ESC
-        setDownloadingReportId(prev => prev);
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside, true);
-    document.addEventListener('keydown', handleEscapeKey);
-    
-    return () => {
-      document.removeEventListener('click', handleClickOutside, true);
-      document.removeEventListener('keydown', handleEscapeKey);
-    };
-  }, []);
 
   const updateEstimation = async () => {
     try {
@@ -136,7 +145,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         startDate: new Date(reportForm.startDate),
         endDate: new Date(reportForm.endDate),
         includeTypes: reportForm.includeTypes
-        // ❌ ELIMINADO: searchTerm
       };
 
       const estimation = await estimateReportSize(filters);
@@ -146,13 +154,11 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
     }
   };
 
-  // ✅ Función para cargar datos de transacciones dinámicamente
   const loadTransactionDataForReport = async (report: TransactionReport) => {
     try {
       setLoadingTransactionData(true);
       console.log('🔄 Cargando datos de transacciones para:', report.title);
       
-      // ✅ VERIFICACIÓN MÁS SEGURA para datos guardados
       const savedDataLength = report.transactionData?.length || 0;
       if (savedDataLength > 0) {
         console.log(`✅ Usando datos guardados: ${savedDataLength} registros`);
@@ -160,7 +166,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         return;
       }
       
-      // ✅ Si no tiene datos guardados, cargar dinámicamente
       console.log('🔄 Cargando datos dinámicamente...');
       const { getTransactionData } = await import('../../services/reportService');
       const transactionData = await getTransactionData(report.filters);
@@ -176,7 +181,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
     }
   };
 
-  // ✅ Función para manejar descarga con formato específico
   const handleDownloadReport = async (report: TransactionReport, format: 'excel' | 'pdf') => {
     try {
       setDownloadingReportId(report.id);
@@ -187,7 +191,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
       } else if (format === 'pdf') {
         const { downloadReportAsPDF } = await import('../../services/downloadService');
         
-        // Cargar datos si no los tiene
         let transactionData = report.transactionData || [];
         if (transactionData.length === 0 && report.filters) {
           const { getTransactionData } = await import('../../services/reportService');
@@ -216,162 +219,9 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
       alert('Error al descargar el reporte: ' + (error instanceof Error ? error.message : 'Error desconocido'));
     } finally {
       setDownloadingReportId(null);
+      setShowDownloadModal(false);
+      setDownloadReportSelected(null);
     }
-  };
-
-  // ✅ Componente selector de formato (MEJORADO)
-  const DownloadFormatSelector: React.FC<{
-    report: TransactionReport;
-    isLoading: boolean;
-  }> = ({ report, isLoading }) => {
-    const [showOptions, setShowOptions] = useState(false);
-    const [dropdownRef, setDropdownRef] = useState<HTMLDivElement | null>(null);
-
-    const handleDownload = async (format: 'excel' | 'pdf') => {
-      setShowOptions(false);
-      await handleDownloadReport(report, format);
-    };
-
-    // ✅ Calcular posición del dropdown (MEJORADO)
-    const getDropdownStyle = (): React.CSSProperties => {
-      if (!dropdownRef) {
-        return {
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          background: 'white',
-          border: '1px solid #e0e0e0',
-          borderRadius: '4px',
-          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-          zIndex: 9999,
-          minWidth: '150px',
-          marginTop: '2px',
-          animation: 'slideDown 0.2s ease-out'
-        };
-      }
-
-      const rect = dropdownRef.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const viewportWidth = window.innerWidth;
-      
-      // ✅ Calcular espacio disponible
-      const spaceBelow = viewportHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      const spaceRight = viewportWidth - rect.left;
-      
-      // ✅ Decidir posición vertical
-      const shouldShowAbove = spaceBelow < 100 && spaceAbove > 100;
-      
-      // ✅ Decidir posición horizontal
-      const shouldShowLeft = spaceRight < 150;
-
-      return {
-        position: 'fixed', // ✅ Cambio a fixed para mejor control
-        [shouldShowAbove ? 'bottom' : 'top']: shouldShowAbove ? 
-          `${viewportHeight - rect.top + 2}px` : 
-          `${rect.bottom + 2}px`,
-        [shouldShowLeft ? 'right' : 'left']: shouldShowLeft ? 
-          `${viewportWidth - rect.right}px` : 
-          `${rect.left}px`,
-        background: 'white',
-        border: '1px solid #e0e0e0',
-        borderRadius: '4px',
-        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
-        zIndex: 10000, // ✅ Z-index aún más alto
-        minWidth: '150px',
-        animation: 'slideDown 0.2s ease-out'
-      };
-    };
-
-    return (
-      <div 
-        className="download-selector" 
-        style={{ position: 'relative', display: 'inline-block' }}
-        ref={setDropdownRef}
-      >
-        <button 
-          className="btn btn-sm btn-success"
-          onClick={() => setShowOptions(!showOptions)}
-          disabled={isLoading}
-          title="Descargar reporte"
-        >
-          {isLoading ? '🔄' : '📥'} 
-        </button>
-        
-        {showOptions && (
-          <>
-            {/* ✅ Overlay mejorado para cerrar el dropdown */}
-            <div
-              style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: 9999, // ✅ Justo debajo del dropdown
-                background: 'transparent',
-                cursor: 'default'
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowOptions(false);
-              }}
-            />
-            <div 
-              className="download-options"
-              data-dropdown="true"
-              style={getDropdownStyle()}
-              onClick={(e) => e.stopPropagation()} // ✅ Evitar que se cierre al hacer clic dentro
-            >
-          
-            <button 
-              className="download-option excel"
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '8px 12px',
-                border: 'none',
-                background: 'white',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: '0.9em',
-                color: '#16a085',
-                borderRadius: '4px 4px 0 0'
-              }}
-              onClick={() => handleDownload('excel')}
-              disabled={isLoading}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-            >
-              📊 Excel (.xlsx)
-            </button>
-            <button 
-              className="download-option pdf"
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '8px 12px',
-                border: 'none',
-                background: 'white',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: '0.9em',
-                color: '#e74c3c',
-                borderRadius: '0 0 4px 4px'
-              }}
-              onClick={() => handleDownload('pdf')}
-              disabled={isLoading}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-            >
-              📄 PDF (.pdf)
-            </button>
-                      </div>
-          </>
-        )}
-      </div>
-    );
   };
 
   const handleGenerateReport = async () => {
@@ -382,10 +232,8 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         startDate: new Date(reportForm.startDate),
         endDate: new Date(reportForm.endDate),
         includeTypes: reportForm.includeTypes
-        // ❌ ELIMINADO: searchTerm
       };
 
-      // Validar filtros
       const validation = validateFilters(filters);
       if (!validation.isValid) {
         alert(`Filtros inválidos: ${validation.errors.join(', ')}`);
@@ -399,8 +247,7 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         filters,
         exportConfig: {
           formats: ['pdf', 'excel'],
-          // ✅ CLARIFICADO: No incluir gráficos automáticos (no son posibles con XLSX básico)
-          includeCharts: false, // Los gráficos se crean manualmente en Excel
+          includeCharts: false, 
           includeStatistics: reportForm.includeDetailedData,
           includeRawData: true,
           groupData: true,
@@ -426,7 +273,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         includeDetailedData: true
       });
       
-      // Recargar lista de reportes
       await loadRecentReports();
     } catch (err) {
       console.error('Error generando reporte:', err);
@@ -439,7 +285,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         startDate: new Date(reportForm.startDate),
         endDate: new Date(reportForm.endDate),
         includeTypes: reportForm.includeTypes
-        // ❌ ELIMINADO: searchTerm
       };
 
       const preview = await previewReportData(filters);
@@ -492,7 +337,262 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
     }).format(amount);
   };
 
-  // ✅ FORMULARIO SIMPLIFICADO
+  const renderDownloadModal = () => {
+    if (!showDownloadModal || !downloadReportSelected) return null;
+
+    return (
+      <ReportModal
+        title="📥 Descargar Reporte"
+        onClose={() => {
+          setShowDownloadModal(false);
+          setDownloadReportSelected(null);
+        }}
+        size="medium"
+      >
+        <div className="download-options">
+          <div className="report-info">
+            <p><strong>Reporte:</strong> {downloadReportSelected.title}</p>
+            <p><strong>Tipo:</strong> {getReportTypeLabel(downloadReportSelected.type)}</p>
+            <p><strong>Período:</strong> {downloadReportSelected.periodStart.toLocaleDateString('es-CL')} - {downloadReportSelected.periodEnd.toLocaleDateString('es-CL')}</p>
+            <p><strong>Transacciones:</strong> {downloadReportSelected.summary?.totalTransactions || 0}</p>
+          </div>
+
+          <div className="format-options">
+            <h4>Selecciona el formato de descarga:</h4>
+            <div className="format-descriptions">
+              <div className="format-description">
+                <h5>📊 Excel (.xlsx)</h5>
+                <p>Ideal para análisis detallado, cálculos personalizados y manipulación de datos. Incluye múltiples hojas con estadísticas completas.</p>
+              </div>
+              <div className="format-description">
+                <h5>📄 PDF (.pdf)</h5>
+                <p>Perfecto para presentaciones, reportes ejecutivos y documentos para imprimir. Formato profesional listo para compartir.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button 
+            className="btn btn-secondary"
+            onClick={() => {
+              setShowDownloadModal(false);
+              setDownloadReportSelected(null);
+            }}
+          >
+            Cancelar
+          </button>
+          <button 
+            className="btn btn-success"
+            onClick={() => handleDownloadReport(downloadReportSelected, 'excel')}
+            disabled={downloadingReportId === downloadReportSelected.id}
+          >
+            {downloadingReportId === downloadReportSelected.id ? '🔄 Descargando...' : '📊 Descargar Excel'}
+          </button>
+          <button 
+            className="btn btn-primary"
+            onClick={() => handleDownloadReport(downloadReportSelected, 'pdf')}
+            disabled={downloadingReportId === downloadReportSelected.id}
+          >
+            {downloadingReportId === downloadReportSelected.id ? '🔄 Descargando...' : '📄 Descargar PDF'}
+          </button>
+        </div>
+      </ReportModal>
+    );
+  };
+
+  const renderInventoryExportModal = () => {
+    if (!showInventoryExportModal) return null;
+
+    return (
+      <ReportModal
+        title="📦 Exportar Inventario"
+        onClose={() => setShowInventoryExportModal(false)}
+        size="large"
+      >
+        <div className="inventory-export-form">
+          <div className="form-section">
+            <h4>📋 Contenido a Incluir</h4>
+            <div className="checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={inventoryExportOptions.includeProductDetails}
+                  onChange={(e) => setInventoryExportOptions(prev => ({
+                    ...prev,
+                    includeProductDetails: e.target.checked
+                  }))}
+                />
+                <span>Crear exportación completa de inventario con todos los campos de productos (nombre, precio, categoría, etc)</span>
+              </label>
+
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={inventoryExportOptions.includeSummary}
+                  onChange={(e) => setInventoryExportOptions(prev => ({
+                    ...prev,
+                    includeSummary: e.target.checked
+                  }))}
+                />
+                <span>Agregar hoja de resumen con totales, promedios y estadísticas generales (total productos, total productos por categoría, valor total del inventario, etc)</span>
+              </label>
+
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={inventoryExportOptions.includeCategories}
+                  onChange={(e) => setInventoryExportOptions(prev => ({
+                    ...prev,
+                    includeCategories: e.target.checked
+                  }))}
+                />
+                <span>Incluir análisis por categorías con estadísticas detalladas</span>
+              </label>
+
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={inventoryExportOptions.includeSuppliers}
+                  onChange={(e) => setInventoryExportOptions(prev => ({
+                    ...prev,
+                    includeSuppliers: e.target.checked
+                  }))}
+                />
+                <span>Crear exportación de proveedores con información de contacto y productos asociados</span>
+              </label>
+
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={inventoryExportOptions.includeInactiveProducts}
+                  onChange={(e) => setInventoryExportOptions(prev => ({
+                    ...prev,
+                    includeInactiveProducts: e.target.checked
+                  }))}
+                />
+                <span>Incluir productos inactivos/deshabilitados</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h4>🔍 Filtros de Exportación</h4>
+            
+            <div className="form-row">
+              <div className="form-group">
+                <label>Filtrar por Stock:</label>
+                <select
+                  value={inventoryExportOptions.stockFilter || 'all'}
+                  onChange={(e) => setInventoryExportOptions(prev => ({
+                    ...prev,
+                    stockFilter: e.target.value as any
+                  }))}
+                  className="filter-select"
+                >
+                  <option value="all">Todos los productos</option>
+                  <option value="in_stock">Solo con stock (más de 5 unidades)</option>
+                  <option value="low_stock">Stock bajo (1-5 unidades)</option>
+                  <option value="out_of_stock">Sin stock (0 unidades)</option>
+                </select>
+              </div>
+            </div>
+
+            {availableCategories.length > 0 && (
+              <div className="form-group">
+                <label>Filtrar por Categorías (opcional):</label>
+                <div className="categories-filter">
+                  {availableCategories.map(category => (
+                    <label key={category} className="checkbox-label small">
+                      <input
+                        type="checkbox"
+                        checked={inventoryExportOptions.categoryFilter?.includes(category) || false}
+                        onChange={(e) => {
+                          const currentFilters = inventoryExportOptions.categoryFilter || [];
+                          const newFilters = e.target.checked
+                            ? [...currentFilters, category]
+                            : currentFilters.filter(c => c !== category);
+                          
+                          setInventoryExportOptions(prev => ({
+                            ...prev,
+                            categoryFilter: newFilters.length > 0 ? newFilters : undefined
+                          }));
+                        }}
+                      />
+                      <span>{category}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {availableSuppliers.length > 0 && (
+              <div className="form-group">
+                <label>Filtrar por Proveedores (opcional):</label>
+                <div className="suppliers-filter">
+                  {availableSuppliers.slice(0, 10).map(supplier => (
+                    <label key={supplier.id} className="checkbox-label small">
+                      <input
+                        type="checkbox"
+                        checked={inventoryExportOptions.supplierFilter?.includes(supplier.id) || false}
+                        onChange={(e) => {
+                          const currentFilters = inventoryExportOptions.supplierFilter || [];
+                          const newFilters = e.target.checked
+                            ? [...currentFilters, supplier.id]
+                            : currentFilters.filter(s => s !== supplier.id);
+                          
+                          setInventoryExportOptions(prev => ({
+                            ...prev,
+                            supplierFilter: newFilters.length > 0 ? newFilters : undefined
+                          }));
+                        }}
+                      />
+                      <span>{supplier.name}</span>
+                    </label>
+                  ))}
+                  {availableSuppliers.length > 10 && (
+                    <small>... y {availableSuppliers.length - 10} proveedores más</small>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="export-info">
+            <div className="info-card">
+              <h4>📊 Información de Exportación</h4>
+              <ul>
+                <li>✅ El archivo se generará en formato Excel (.xlsx)</li>
+                <li>📋 Cada sección seleccionada será una hoja separada</li>
+                <li>📈 Las estadísticas se calcularán automáticamente</li>
+                <li>🔍 Los filtros se aplicarán a todos los datos</li>
+                <li>💾 El archivo se descargará automáticamente</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button 
+            className="btn btn-secondary"
+            onClick={() => setShowInventoryExportModal(false)}
+            disabled={inventoryExporting}
+          >
+            Cancelar
+          </button>
+          
+          <button 
+            className="btn btn-success"
+            onClick={handleInventoryExport}
+            disabled={inventoryExporting}
+          >
+            {inventoryExporting ? '🔄 Exportando...' : '📦 Exportar Inventario'}
+          </button>
+        </div>
+      </ReportModal>
+    );
+  };
+
   const renderGenerateForm = () => (
     <div className="report-form">
       <div className="form-row">
@@ -566,7 +666,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         />
       </div>
 
-      {/* ✅ OPCIÓN SIMPLIFICADA Y CLARA */}
       <div className="form-group">
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
           <input
@@ -653,7 +752,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
     </div>
   );
 
-  // ✅ Renderizar datos de transacciones con carga dinámica
   const renderTransactionData = () => {
     if (loadingTransactionData) {
       return (
@@ -664,7 +762,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
       );
     }
 
-    // ✅ Mostrar datos cargados dinámicamente O datos guardados
     const dataToShow = selectedReportTransactionData.length > 0 
       ? selectedReportTransactionData 
       : selectedReport?.transactionData || [];
@@ -685,7 +782,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
       );
     }
 
-    // ✅ CORRECCIÓN: Verificación más segura para evitar undefined
     const savedDataLength = selectedReport?.transactionData?.length || 0;
     const isFromSavedData = selectedReportTransactionData.length === 0 && savedDataLength > 0;
     const totalFromSummary = selectedReport?.summary?.totalTransactions || 0;
@@ -751,7 +847,10 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
                   <td>{transaction.items.length}</td>
                   <td>
                     <span className={`status-badge ${transaction.status === 'completed' ? 'success' : 'warning'}`}>
-                      {transaction.status === 'completed' ? 'Completado' : transaction.status}
+                      {transaction.status === 'completed' ? 'Completado' : 
+                       transaction.status === 'pending' ? 'Pendiente' :
+                       transaction.status === 'cancelled' ? 'Cancelado' :
+                       transaction.status}
                     </span>
                   </td>
                 </tr>
@@ -840,7 +939,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
                           setSelectedReport(report);
                           setShowDetailsModal(true);
                           
-                          // Cargar datos de transacciones dinámicamente
                           await loadTransactionDataForReport(report);
                         }}
                         title="Ver detalles del reporte"
@@ -849,11 +947,17 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
                       </button>
                       {report.status === ReportStatus.COMPLETED && (
                         <>
-                          {/* ✅ SELECTOR DE FORMATO */}
-                          <DownloadFormatSelector 
-                            report={report}
-                            isLoading={downloadingReportId === report.id}
-                          />
+                          <button 
+                            className="btn btn-sm btn-success"
+                            onClick={() => {
+                              setDownloadReportSelected(report);
+                              setShowDownloadModal(true);
+                            }}
+                            disabled={downloadingReportId === report.id}
+                            title="Descargar reporte"
+                          >
+                            {downloadingReportId === report.id ? '🔄' : '📥'}
+                          </button>
                           
                           <button 
                             className="btn btn-sm btn-secondary"
@@ -912,113 +1016,17 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
 
   return (
     <div className="transaction-reports">
-      {/* ✅ Estilos CSS para el dropdown (MEJORADOS) */}
-      <style>{`
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .info-card {
-          border-radius: 8px;
-          padding: 16px;
-        }
-        
-        .download-selector {
-          position: relative;
-          display: inline-block;
-        }
-        
-        .download-options {
-          border: 1px solid #e0e0e0 !important;
-          border-radius: 4px !important;
-          background: white !important;
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
-          overflow: hidden;
-        }
-        
-        .download-option {
-          display: block !important;
-          width: 100% !important;
-          padding: 10px 14px !important;
-          border: none !important;
-          background: white !important;
-          text-align: left !important;
-          cursor: pointer !important;
-          font-size: 0.9em !important;
-          transition: background-color 0.2s ease !important;
-          border-bottom: 1px solid #f0f0f0 !important;
-        }
-        
-        .download-option:last-child {
-          border-bottom: none !important;
-        }
-        
-        .download-option.excel {
-          color: #16a085 !important;
-        }
-        
-        .download-option.pdf {
-          color: #e74c3c !important;
-        }
-        
-        .download-option:hover:not(:disabled) {
-          background-color: #f8f9fa !important;
-        }
-        
-        .download-option:disabled {
-          opacity: 0.5 !important;
-          cursor: not-allowed !important;
-        }
-        
-        /* ✅ Asegurar que el dropdown esté por encima de todo */
-        .download-options {
-          z-index: 999999 !important; /* ✅ Z-index máximo */
-          position: fixed !important;
-        }
-        
-        /* ✅ Asegurar que el overlay también funcione */
-        .download-overlay {
-          z-index: 999998 !important;
-          position: fixed !important;
-        }
-        
-        /* ✅ Mejorar la animación del dropdown */
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-8px) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-        
-        /* ✅ Efecto hover mejorado */
-        .download-option:hover:not(:disabled) {
-          background-color: #f1f3f4 !important;
-          transform: translateX(2px);
-          transition: all 0.15s ease !important;
-        }
-        
-        /* ✅ Efecto de focus para accesibilidad */
-        .download-option:focus {
-          outline: 2px solid #4285f4 !important;
-          outline-offset: -2px !important;
-          background-color: #e8f0fe !important;
-        }
-      `}</style>
-
       <div className="section-header">
         <h2>💼 Reportes de Transacciones</h2>
         <div className="header-actions">
+          <button 
+            className="btn btn-secondary"
+            onClick={() => setShowInventoryExportModal(true)}
+            disabled={inventoryExporting}
+          >
+            {inventoryExporting ? '🔄 Exportando...' : '📦 Exportar Inventario'}
+          </button>
+          
           <button 
             className="btn btn-primary"
             onClick={() => setShowGenerateModal(true)}
@@ -1038,7 +1046,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
       {renderGenerationStatus()}
       {renderReportsList()}
 
-      {/* Modal para generar reporte */}
       {showGenerateModal && (
         <ReportModal
           title="📊 Generar Nuevo Reporte"
@@ -1067,14 +1074,13 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
         </ReportModal>
       )}
 
-      {/* ✅ Modal para detalles del reporte (TAMAÑO XLARGE) */}
       {selectedReport && showDetailsModal && (
         <ReportModal
           title={`📋 Detalles: ${selectedReport.title}`}
           onClose={() => {
             setShowDetailsModal(false);
             setSelectedReport(null);
-            setSelectedReportTransactionData([]); // Limpiar datos cargados
+            setSelectedReportTransactionData([]);
           }}
           size="xlarge"
         >
@@ -1173,7 +1179,6 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
               </div>
             )}
 
-            {/* ✅ Sección de datos de transacciones */}
             {renderTransactionData()}
 
             {selectedReport.files && selectedReport.files.length > 0 && (
@@ -1206,6 +1211,9 @@ const TransactionReports: React.FC<TransactionReportsProps> = () => {
           }}
         />
       )}
+
+      {renderDownloadModal()}
+      {renderInventoryExportModal()}
     </div>
   );
 };

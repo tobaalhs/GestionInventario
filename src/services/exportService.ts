@@ -363,8 +363,7 @@ export const processExport = async (
  * Aplicar filtros a los datos
  */
 const applyFilters = (data: any[], filters: any): any[] => {
-  // Implementación básica de filtros
-  // Esta función se expandiría según los filtros específicos de cada tipo de datos
+
   return data;
 };
 
@@ -372,9 +371,8 @@ const applyFilters = (data: any[], filters: any): any[] => {
  * Generar archivo PDF
  */
 const generatePDF = async (data: any[], config: ExportConfig): Promise<Uint8Array> => {
-  // Implementación simulada para PDF
-  // En una implementación real usarías librerías como jsPDF o Puppeteer
-  console.log('📄 Generando PDF...');
+
+  console.log('Generando PDF...');
   
   const pdfContent = `
     PDF Export Report
@@ -391,8 +389,7 @@ const generatePDF = async (data: any[], config: ExportConfig): Promise<Uint8Arra
  * Generar archivo Excel
  */
 const generateExcel = async (data: any[], config: ExportConfig): Promise<Uint8Array> => {
-  // Implementación simulada para Excel
-  // En una implementación real usarías librerías como SheetJS (xlsx)
+
   console.log('📊 Generando Excel...');
   
   const excelContent = `
@@ -514,8 +511,7 @@ const generateXML = (data: any[], config: ExportConfig): string => {
  * Generar archivo ZIP
  */
 const generateZIP = async (data: any[], config: ExportConfig): Promise<Uint8Array> => {
-  // Implementación simulada para ZIP
-  // En una implementación real usarías librerías como JSZip
+
   console.log('🗜️ Generando ZIP...');
   
   const zipContent = `
@@ -657,8 +653,7 @@ const applyWatermark = async (content: any, watermark: any, userEmail: string): 
  * Generar URL de descarga
  */
 const generateDownloadUrl = async (fileName: string, content: any): Promise<string> => {
-  // Implementación simulada
-  // En una implementación real subirías el archivo a un servicio de almacenamiento
+
   return `https://storage.example.com/exports/${fileName}`;
 };
 

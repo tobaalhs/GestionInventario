@@ -94,7 +94,7 @@ export const validatePurchaseForm = (data: PurchaseFormData): ValidationResult =
     errors.push('El monto total de la compra debe ser mayor a 0');
   }
 
-  if (totalAmount > 50000000) { // 50 millones CLP
+  if (totalAmount > 50000000) { 
     warnings.push('Monto muy alto, verifique antes de procesar');
   }
 
@@ -291,7 +291,7 @@ export const generateUniqueCode = (prefix: string = 'COMP'): string => {
   const seconds = String(now.getSeconds()).padStart(2, '0');
   
   // Agregar timestamp para garantizar unicidad
-  const timestamp = now.getTime().toString().slice(-4); // Últimos 4 dígitos
+  const timestamp = now.getTime().toString().slice(-4); 
   
   return `${prefix}-${year}${month}${day}-${hours}${minutes}${seconds}-${timestamp}`;
 };

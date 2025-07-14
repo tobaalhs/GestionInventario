@@ -19,18 +19,18 @@ const PublicDownloadPage: React.FC = () => {
   const [downloadCompleted, setDownloadCompleted] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // ✅ Usar useRef para evitar ejecuciones múltiples
+  //  Usar useRef para evitar ejecuciones múltiples
   const downloadInitiated = useRef(false);
 
   useEffect(() => {
-    // ✅ Verificar que tenemos los parámetros necesarios
+    //  Verificar que tenemos los parámetros necesarios
     if (!reportId || !token) {
       setError('Enlace de descarga inválido. Faltan parámetros requeridos.');
       setLoading(false);
       return;
     }
 
-    // ✅ Evitar ejecución múltiple con useRef
+    //  Evitar ejecución múltiple con useRef
     if (downloadInitiated.current) {
       console.log('🔄 Descarga ya iniciada, ignorando useEffect adicional...');
       return;
@@ -38,7 +38,7 @@ const PublicDownloadPage: React.FC = () => {
 
     downloadInitiated.current = true;
     handleSecureDownload();
-  }, [reportId, token]); // ✅ Dependencias necesarias para que se ejecute cuando estén disponibles
+  }, [reportId, token]); //  Dependencias necesarias para que se ejecute cuando estén disponibles
 
   const handleSecureDownload = async () => {
     console.log('🔒 handleSecureDownload called - Estados actuales:', {
@@ -47,7 +47,7 @@ const PublicDownloadPage: React.FC = () => {
       downloadInitiated: downloadInitiated.current
     });
     
-    // ✅ Verificar estado antes de proceder
+    //  Verificar estado antes de proceder
     if (isDownloading || downloadCompleted) {
       console.log('🔄 Descarga ya en proceso o completada, ignorando...', {
         isDownloading,
@@ -62,7 +62,7 @@ const PublicDownloadPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // 1️⃣ Validar token
+      // Validar token
       console.log('🔍 Validando token de descarga...');
       const tokenValidation = await validateDownloadToken(token!, reportId!, format);
 
@@ -95,7 +95,7 @@ const PublicDownloadPage: React.FC = () => {
       setDownloadToken(tokenValidation.token!);
       console.log('✅ Token válido, procediendo con descarga...');
 
-      // 2️⃣ Obtener datos del reporte
+      //  Obtener datos del reporte
       console.log('📊 Cargando datos del reporte...');
       const reportData = await getReportById(reportId!);
       
@@ -109,7 +109,7 @@ const PublicDownloadPage: React.FC = () => {
       setReport(reportData);
       console.log('✅ Datos del reporte cargados exitosamente');
 
-      // 3️⃣ Marcar token como usado (antes de la descarga para tracking)
+      //  Marcar token como usado (antes de la descarga para tracking)
       try {
         await markTokenAsUsed(tokenValidation.token!.id, {
           ipAddress: await getClientIP(),
@@ -121,7 +121,7 @@ const PublicDownloadPage: React.FC = () => {
         // No detener la descarga por error de tracking
       }
 
-      // 4️⃣ Cargar datos dinámicos para AMBOS formatos
+      // Cargar datos dinámicos para AMBOS formatos
       console.log(`📥 Preparando datos para descarga ${format.toUpperCase()}...`);
       
       let transactionData = reportData.transactionData || [];
@@ -139,7 +139,7 @@ const PublicDownloadPage: React.FC = () => {
         }
       }
 
-      // ✅ Preparar datos completos para ambos formatos
+      //  Preparar datos completos para ambos formatos
       const exportData = {
         reportInfo: {
           title: reportData.title,
@@ -155,7 +155,7 @@ const PublicDownloadPage: React.FC = () => {
         statistics: reportData.statistics
       };
 
-      // ✅ Generar y descargar archivo según formato
+      // Generar y descargar archivo según formato
       console.log(`🚀 Iniciando descarga de archivo ${format.toUpperCase()}...`);
       if (format === 'pdf') {
         await downloadReportAsPDF(exportData);
@@ -187,7 +187,7 @@ const PublicDownloadPage: React.FC = () => {
     }
   };
 
-  // ✅ Función simplificada para reintento
+  //  Función simplificada para reintento
   const handleRetryDownload = async () => {
     if (isDownloading) {
       console.log('🔄 Descarga ya en proceso...');
@@ -196,19 +196,19 @@ const PublicDownloadPage: React.FC = () => {
     
     console.log('🔄 Iniciando reintento de descarga...');
     
-    // ✅ Resetear TODOS los estados para permitir nueva descarga
+    //  Resetear TODOS los estados para permitir nueva descarga
     setIsDownloading(false);
     setDownloadCompleted(false);
     setError(null);
     setLoading(true);
     
-    // ✅ Resetear flag de descarga iniciada
+    // Resetear flag de descarga iniciada
     downloadInitiated.current = false;
     
-    // ✅ Pequeña pausa para asegurar que los estados se actualicen
+    //  Pequeña pausa para asegurar que los estados se actualicen
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    // ✅ Marcar como iniciado y ejecutar
+    //  Marcar como iniciado y ejecutar
     downloadInitiated.current = true;
     await handleSecureDownload();
   };

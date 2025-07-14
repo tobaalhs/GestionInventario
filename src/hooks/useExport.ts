@@ -190,10 +190,6 @@ export const useExport = (): UseExportReturn => {
 
       console.log('🔄 Actualizando configuración:', configId);
       
-      // Aquí implementarías la función updateExportConfig en el servicio
-      // await updateExportConfig(configId, updates);
-      
-      // Por ahora solo actualizar localmente
       setConfigs(prev => prev.map(config => 
         config.id === configId ? { ...config, ...updates } : config
       ));
@@ -220,10 +216,6 @@ export const useExport = (): UseExportReturn => {
 
       console.log('🗑️ Eliminando configuración:', configId);
       
-      // Aquí implementarías la función deleteExportConfig en el servicio
-      // await deleteExportConfig(configId);
-      
-      // Por ahora solo eliminar localmente
       setConfigs(prev => prev.filter(config => config.id !== configId));
       
       setSuccess('Configuración eliminada exitosamente');
@@ -382,10 +374,6 @@ export const useExport = (): UseExportReturn => {
 
       console.log('🧹 Limpiando historial anterior a:', cutoffDate);
       
-      // Aquí implementarías la función clearExportHistory en el servicio
-      // await clearExportHistory(cutoffDate);
-      
-      // Por ahora solo filtrar localmente
       setHistory(prev => prev.filter(exp => exp.createdAt >= cutoffDate));
       
       setSuccess('Historial limpiado exitosamente');
@@ -472,10 +460,6 @@ export const useExport = (): UseExportReturn => {
 
       console.log('⏰ Programando exportación automática...', schedule.name);
       
-      // Aquí implementarías la función createScheduledExport en el servicio
-      // const scheduleId = await createScheduledExport(schedule);
-      
-      // Por ahora simular ID
       const scheduleId = `schedule_${Date.now()}`;
       
       const newSchedule: ScheduledExport = {
@@ -512,10 +496,6 @@ export const useExport = (): UseExportReturn => {
 
       console.log('⏰ Cargando exportaciones programadas...');
       
-      // Aquí implementarías la función getScheduledExports en el servicio
-      // const scheduled = await getScheduledExports();
-      
-      // Por ahora usar datos simulados
       setScheduledExports([]);
       
       console.log('✅ Exportaciones programadas cargadas');
@@ -542,8 +522,6 @@ export const useExport = (): UseExportReturn => {
 
       console.log('🔄 Actualizando exportación programada:', scheduleId);
       
-      // Aquí implementarías la función updateScheduledExport en el servicio
-      // await updateScheduledExport(scheduleId, updates);
       
       setScheduledExports(prev => prev.map(schedule => 
         schedule.id === scheduleId ? { ...schedule, ...updates, updatedAt: new Date() } : schedule
@@ -570,9 +548,7 @@ export const useExport = (): UseExportReturn => {
       setError(null);
 
       console.log('🗑️ Eliminando exportación programada:', scheduleId);
-      
-      // Aquí implementarías la función deleteScheduledExport en el servicio
-      // await deleteScheduledExport(scheduleId);
+
       
       setScheduledExports(prev => prev.filter(schedule => schedule.id !== scheduleId));
       
@@ -630,8 +606,6 @@ export const useExport = (): UseExportReturn => {
 
       console.log('📤 Reenviando exportación:', exportId, 'por', deliveryMethod);
       
-      // Aquí implementarías la función resendExport en el servicio
-      // await resendExport(exportId, deliveryMethod);
       
       setSuccess(`Exportación reenviada por ${deliveryMethod}`);
       console.log('✅ Exportación reenviada');

@@ -368,7 +368,6 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
           </select>
         </div>
 
-        {/* CORREGIDO: Cambié las etiquetas para que sean más claras */}
         <div className="form-group">
           <label>Cantidad mínima:</label>
           <input
@@ -517,7 +516,6 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
               Solo productos con fecha de vencimiento
             </label>
 
-            {/* CORREGIDO: Ahora hasComments funciona correctamente */}
             <label className="checkbox-label">
               <input
                 type="checkbox"

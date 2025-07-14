@@ -14,7 +14,6 @@ interface MovementHistoryProps {}
 const MovementHistory: React.FC<MovementHistoryProps> = () => {
   const { currentUser } = useAuth();
   
-  // ✅ MOVER EL HOOK AQUÍ DENTRO DEL COMPONENTE
   const {
     movements,
     statistics,
@@ -28,11 +27,6 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
     clearError
   } = useMovementHistory();
 
-  // ❌ ELIMINAR ESTOS ESTADOS DUPLICADOS - ya los proporciona el hook
-  // const [movements, setMovements] = useState<MovementRecord[]>([]);
-  // const [loading, setLoading] = useState(false);
-  // const [error, setError] = useState<string | null>(null);
-  // const [statistics, setStatistics] = useState<MovementStatistics | null>(null);
   
   // Estados de UI (estos sí los mantienes porque son específicos del componente)
   const [showFilters, setShowFilters] = useState(true);
@@ -40,16 +34,7 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
   const [showModal, setShowModal] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
-  // ❌ ELIMINAR ESTE ESTADO DE FILTROS DUPLICADO - ya lo maneja el hook
-  // const [filters, setFilters] = useState<MovementFilters>({...});
 
-  // ❌ ELIMINAR ESTA FUNCIÓN - ya la proporciona el hook
-  // useEffect(() => {
-  //   loadMovements();
-  // }, [filters]);
-
-  // ❌ ELIMINAR ESTA FUNCIÓN DUPLICADA - usar la del hook
-  // const loadMovements = async () => { ... };
 
   const handleFilterChange = (newFilters: Partial<MovementFilters>) => {
     updateFilters(newFilters);
@@ -59,15 +44,6 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
     clearFilters();
   };
 
-  // ✅ NO necesitamos este useEffect porque el hook ya maneja los cambios
-  // React.useEffect(() => {
-  //   if (currentFilters.startDate && currentFilters.endDate && movements.length > 0) {
-  //     loadStatistics(currentFilters);
-  //   }
-  // }, [currentFilters.startDate, currentFilters.endDate]);
-
-  // ❌ ELIMINAR ESTA FUNCIÓN DUPLICADA - usar clearFilters del hook
-  // const clearFilters = () => { ... };
 
   const handleExport = async () => {
     try {
@@ -473,14 +449,7 @@ const MovementHistory: React.FC<MovementHistoryProps> = () => {
               🃏 Tarjetas
             </button>
           </div>
-          
-          <button 
-            className="btn btn-primary"
-            onClick={handleExport}
-            disabled={movements.length === 0}
-          >
-            📊 Exportar a Excel
-          </button>
+        
         </div>
       </div>
 

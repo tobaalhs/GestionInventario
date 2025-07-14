@@ -187,7 +187,7 @@ const StockPurchase: React.FC = () => {
     setShowConfirmation(true);
   };
 
-  // Procesar compra - AQUÍ ESTÁ LA CORRECCIÓN PRINCIPAL
+  // Procesar compra
   const handleConfirmPurchase = async () => {
     if (!currentUser) return;
 
@@ -197,7 +197,6 @@ const StockPurchase: React.FC = () => {
       console.log('=== PROCESANDO COMPRA ===');
       console.log('Datos del proveedor:', formData.supplier);
 
-      // ✅ LÓGICA CORREGIDA PARA MANEJAR PROVEEDORES EXISTENTES VS NUEVOS
       let supplierId = '';
       let supplierInfo;
 
@@ -256,8 +255,8 @@ const StockPurchase: React.FC = () => {
           category: product.category || 'Sin categoría',
           isNewProduct: product.isNewProduct
         })),
-        supplierId: supplierId, // ✅ Usar el ID correcto (vacío para nuevos, con valor para existentes)
-        supplierInfo: supplierInfo, // ✅ Información completa del proveedor
+        supplierId: supplierId, 
+        supplierInfo: supplierInfo, 
         purchaseDate: new Date(formData.purchaseDate),
         expirationDate: formData.expirationDate ? new Date(formData.expirationDate) : undefined,
         totalAmount: purchaseTotal,

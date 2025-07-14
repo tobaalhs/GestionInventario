@@ -292,7 +292,7 @@ export const useCustomers = (): UseCustomersReturn => {
     return {
       isValid: result.isValid,
       errors: result.errors,
-      warnings: result.warnings, // Ahora es compatible al ser opcional
+      warnings: result.warnings,
       suggestions: []
     };
   }, []);

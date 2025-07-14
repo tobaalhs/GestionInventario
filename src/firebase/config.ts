@@ -3,7 +3,6 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
 
-// Tu configuración de Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBy1tBbaPzDs0WE3n5X2j-FmAVGcSYsmJc",
   authDomain: "gestioninventarioyventas.firebaseapp.com",

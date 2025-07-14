@@ -77,7 +77,7 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
         console.log('Cliente encontrado en BD:', existingCustomer);
         
         if (existingCustomer.isActive) {
-          // Cliente activo encontrado - SELECCIONARLO AUTOMÁTICAMENTE
+          // Cliente activo encontrado 
           console.log('Cliente activo encontrado, seleccionando automáticamente...');
           handleSelectCustomer(existingCustomer);
         } else {
@@ -116,13 +116,13 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     }
   };
 
-  // Seleccionar cliente existente - FUNCIÓN CLAVE
+  // Seleccionar cliente existente 
   const handleSelectCustomer = (customer: Customer) => {
     console.log('Seleccionando cliente:', customer);
     
     const customerData: CustomerFormData = {
-      id: customer.id, // ✅ IMPORTANTE: Incluir el ID del cliente existente
-      isNewCustomer: false, // ✅ IMPORTANTE: Marcar como NO nuevo
+      id: customer.id, 
+      isNewCustomer: false, 
       rut: customer.rut,
       name: customer.name,
       contact: customer.contact,
@@ -183,8 +183,8 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     if (!validateNewCustomerForm()) return;
 
     const customerData: CustomerFormData = {
-      id: undefined, // ✅ Sin ID para nuevos clientes
-      isNewCustomer: true, // ✅ Marcar como nuevo
+      id: undefined, 
+      isNewCustomer: true, 
       rut: newCustomerData.rut,
       name: newCustomerData.name,
       contact: newCustomerData.contact,

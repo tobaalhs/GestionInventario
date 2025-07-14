@@ -13,7 +13,7 @@ const formatCurrency = (amount: number): string => {
 };
 
 /**
- * ✅ Generar enlace de descarga con token temporal
+ * Generar enlace de descarga con token temporal
  */
 const generateDownloadLinkWithToken = async (
   reportId: string, 
@@ -47,7 +47,7 @@ const generateDownloadLinkWithToken = async (
 };
 
 /**
- * ✅ Enviar email con enlaces de descarga seguros (ACTUALIZADO)
+ * Enviar email con enlaces de descarga seguros 
  */
 export const sendReportEmailWithDownloadLinks = async (
   report: TransactionReport,
@@ -104,7 +104,7 @@ export const sendReportEmailWithDownloadLinks = async (
 };
 
 /**
- * ✅ Función backward compatible (mantiene la función original)
+ * Función backward compatible 
  */
 const generateDownloadLink = (reportId: string, format: 'excel' | 'pdf' = 'excel'): string => {
   console.warn('⚠️ Usando enlace de descarga sin token (menos seguro)');
@@ -113,14 +113,14 @@ const generateDownloadLink = (reportId: string, format: 'excel' | 'pdf' = 'excel
 };
 
 /**
- * ✅ Validar configuración de email antes de enviar
+ *  Validar configuración de email antes de enviar
  */
 export const validateEmailConfiguration = (): boolean => {
   return !!(EMAIL_CONFIG.serviceId && EMAIL_CONFIG.templateId && EMAIL_CONFIG.publicKey);
 };
 
 /**
- * ✅ Enviar email de notificación simple (sin enlaces de descarga)
+ *Enviar email de notificación simple (sin enlaces de descarga)
  */
 export const sendSimpleNotificationEmail = async (
   recipientEmail: string,
@@ -142,7 +142,7 @@ export const sendSimpleNotificationEmail = async (
 
     const response = await emailjs.send(
       EMAIL_CONFIG.serviceId,
-      EMAIL_CONFIG.templateId, // Usar template diferente si tienes uno para notificaciones
+      EMAIL_CONFIG.templateId, 
       templateParams,
       EMAIL_CONFIG.publicKey
     );
@@ -155,14 +155,12 @@ export const sendSimpleNotificationEmail = async (
 };
 
 /**
- * ✅ Función para test de conectividad de email
+ *Función para test de conectividad de email
  */
 export const testEmailConnectivity = async (): Promise<boolean> => {
   try {
     console.log('🔍 Probando conectividad del servicio de email...');
     
-    // Realizar una prueba básica (esto depende de tu proveedor de email)
-    // Aquí podrías implementar una llamada de prueba
     
     return validateEmailConfiguration();
   } catch (error) {

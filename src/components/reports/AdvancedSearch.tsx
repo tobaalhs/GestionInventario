@@ -13,18 +13,18 @@ import {
   MovementSortField 
 } from '../../interfaces/Movement';
 import { searchMovements } from '../../services/movementHistoryService';
-import { searchExportHistory } from '../../services/exportService';
+import { 
+  translateReportType, 
+  translateReportStatus, 
+  translateTransactionType,
+  getStatusColorClass,
+  formatCurrencySpanish 
+} from '../../utils/translationUtils';
 import ReportModal from './ReportModal';
-import {
-  ExportDataType,
-  ExportFormat,
-  ExportHistoryStatus,
-  ExportHistoryFilters  // ⭐ IMPORTANTE: Asegúrate de importar este tipo
-} from '../../interfaces/ExportConfig';
 
 interface AdvancedSearchProps {}
 
-type SearchType = 'reports' | 'movements' | 'exports';
+type SearchType = 'reports' | 'movements';
 
 interface SearchPresets {
   name: string;
@@ -37,20 +37,19 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
   const { currentUser } = useAuth();
   const { 
     reports, 
-    loading, 
-    error, 
+    loading: reportsLoading, 
+    error: reportsError, 
     searchReportsByFilters, 
     clearError 
   } = useReports();
 
-  // Estados principales
   const [searchType, setSearchType] = useState<SearchType>('reports');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
-  // Filtros para reportes
   const [reportFilters, setReportFilters] = useState<ReportSearchFilters>({
     types: [],
     statuses: [],
@@ -61,7 +60,9 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
     pageSize: 20
   });
 
-  // Filtros para movimientos
+  const [selectedReportType, setSelectedReportType] = useState<string>('');
+  const [selectedReportStatus, setSelectedReportStatus] = useState<string>('');
+
   const [movementFilters, setMovementFilters] = useState<MovementFilters>({
     movementType: 'all',
     sortBy: MovementSortField.DATE,
@@ -69,32 +70,11 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
     pageSize: 50
   });
 
-  // Filtros para exportaciones
-  const [exportFilters, setExportFilters] = useState<ExportHistoryFilters>({
-  startDate: undefined,
-  endDate: undefined,
-  dataTypes: [],
-  formats: [],
-  exportedBy: [],
-  configIds: [],
-  statuses: [],
-  minFileSize: undefined,
-  maxFileSize: undefined,
-  minRecordCount: undefined,
-  maxRecordCount: undefined,
-  searchTerm: '',
-  sortBy: 'createdAt',
-  sortOrder: 'desc',
-  page: undefined,
-  pageSize: 20
-});
-  // Estados de UI
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SearchPresets[]>([]);
   const [searchName, setSearchName] = useState('');
   const [showSaveSearch, setShowSaveSearch] = useState(false);
 
-  // Presets de búsqueda
   const searchPresets: SearchPresets[] = [
     {
       name: 'Reportes de este mes',
@@ -126,31 +106,50 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
       }
     },
     {
-      name: 'Exportaciones fallidas',
-      description: 'Exportaciones que han fallado recientemente',
-      type: 'exports',
+      name: 'Movimientos recientes',
+      description: 'Todos los movimientos de los últimos 30 días',
+      type: 'movements',
       filters: {
-        statuses: ['failed'],
-        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        endDate: new Date()
       }
     }
   ];
 
   useEffect(() => {
-    loadSavedSearches();
-  }, []);
+    const newTypes = selectedReportType ? [selectedReportType as ReportType] : [];
+    const newStatuses = selectedReportStatus ? [selectedReportStatus as ReportStatus] : [];
+    
+    setReportFilters(prev => ({
+      ...prev,
+      types: newTypes,
+      statuses: newStatuses
+    }));
+  }, [selectedReportType, selectedReportStatus]);
 
   useEffect(() => {
-    if (error) {
+    if (searchType === 'reports' && reports.length > 0) {
+      console.log('📊 Actualizando resultados de reportes:', reports.length);
+      setSearchResults(reports);
+    }
+  }, [reports, searchType]);
+
+  useEffect(() => {
+    if (reportsError) {
+      setError(reportsError);
       const timer = setTimeout(() => {
         clearError();
+        setError(null);
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [error, clearError]);
+  }, [reportsError, clearError]);
+
+  useEffect(() => {
+    loadSavedSearches();
+  }, []);
 
   const loadSavedSearches = () => {
-    // Cargar búsquedas guardadas del localStorage
     const saved = localStorage.getItem('advancedSearches');
     if (saved) {
       try {
@@ -174,9 +173,6 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
         break;
       case 'movements':
         filters = movementFilters;
-        break;
-      case 'exports':
-        filters = exportFilters;
         break;
     }
 
@@ -202,12 +198,15 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
     switch (preset.type) {
       case 'reports':
         setReportFilters(prev => ({ ...prev, ...preset.filters }));
+        if (preset.filters.types && preset.filters.types.length > 0) {
+          setSelectedReportType(preset.filters.types[0]);
+        }
+        if (preset.filters.statuses && preset.filters.statuses.length > 0) {
+          setSelectedReportStatus(preset.filters.statuses[0]);
+        }
         break;
       case 'movements':
         setMovementFilters(prev => ({ ...prev, ...preset.filters }));
-        break;
-      case 'exports':
-        setExportFilters(prev => ({ ...prev, ...preset.filters }));
         break;
     }
   };
@@ -215,39 +214,49 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
   const executeSearch = async () => {
     try {
       setSearching(true);
+      setError(null);
       setSearchResults([]);
+
+      console.log(`🔍 Ejecutando búsqueda de tipo: ${searchType}`);
 
       switch (searchType) {
         case 'reports':
           await searchReports();
           break;
         case 'movements':
-            await searchMovementsData();
-            break;
-        case 'exports':
-          await searchExports();
+          await searchMovementsData();
           break;
       }
     } catch (err) {
-      console.error('Error en búsqueda:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Error en búsqueda';
+      setError(errorMessage);
+      console.error('❌ Error en búsqueda:', err);
     } finally {
       setSearching(false);
     }
   };
 
   const searchReports = async () => {
-    await searchReportsByFilters(reportFilters);
-    setSearchResults(reports);
+    try {
+      console.log('📊 Buscando reportes con filtros:', reportFilters);
+      await searchReportsByFilters(reportFilters);
+      console.log('✅ Búsqueda de reportes completada');
+    } catch (error) {
+      console.error('❌ Error buscando reportes:', error);
+      throw error;
+    }
   };
 
   const searchMovementsData = async () => {
-  const result = await searchMovements(movementFilters);
-  setSearchResults(result.movements);
-};
-
-  const searchExports = async () => {
-    const result = await searchExportHistory(exportFilters);
-    setSearchResults(result.exports);
+    try {
+      console.log('📈 Buscando movimientos con filtros:', movementFilters);
+      const result = await searchMovements(movementFilters);
+      setSearchResults(result.movements);
+      console.log(`✅ ${result.movements.length} movimientos encontrados`);
+    } catch (error) {
+      console.error('❌ Error buscando movimientos:', error);
+      throw error;
+    }
   };
 
   const clearAllFilters = () => {
@@ -262,6 +271,8 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
           sortOrder: 'desc',
           pageSize: 20
         });
+        setSelectedReportType('');
+        setSelectedReportStatus('');
         break;
       case 'movements':
         setMovementFilters({
@@ -271,28 +282,16 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
           pageSize: 50
         });
         break;
-      case 'exports':
-        setExportFilters({
-            startDate: undefined,
-            endDate: undefined,
-            dataTypes: [],
-            formats: [],
-            exportedBy: [],
-            configIds: [],
-            statuses: [],
-            minFileSize: undefined,
-            maxFileSize: undefined,
-            minRecordCount: undefined,
-            maxRecordCount: undefined,
-            searchTerm: '',
-            sortBy: 'createdAt',
-            sortOrder: 'desc',
-            page: undefined,
-            pageSize: 20
-        });
-        break;
     }
     setSearchResults([]);
+    setError(null);
+  };
+
+  const handleSearchTypeChange = (newType: SearchType) => {
+    setSearchType(newType);
+    setSearchResults([]);
+    setError(null);
+    console.log(`🔄 Cambiando tipo de búsqueda a: ${newType}`);
   };
 
   const formatCurrency = (amount: number): string => {
@@ -322,7 +321,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
       <div className="type-buttons">
         <button 
           className={`type-btn ${searchType === 'reports' ? 'active' : ''}`}
-          onClick={() => setSearchType('reports')}
+          onClick={() => handleSearchTypeChange('reports')}
         >
           <span className="type-icon">📊</span>
           <div>
@@ -333,23 +332,12 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
 
         <button 
           className={`type-btn ${searchType === 'movements' ? 'active' : ''}`}
-          onClick={() => setSearchType('movements')}
+          onClick={() => handleSearchTypeChange('movements')}
         >
           <span className="type-icon">📈</span>
           <div>
             <strong>Movimientos</strong>
             <small>Historial de stock</small>
-          </div>
-        </button>
-
-        <button 
-          className={`type-btn ${searchType === 'exports' ? 'active' : ''}`}
-          onClick={() => setSearchType('exports')}
-        >
-          <span className="type-icon">📤</span>
-          <div>
-            <strong>Exportaciones</strong>
-            <small>Archivos exportados</small>
           </div>
         </button>
       </div>
@@ -371,38 +359,32 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
         </div>
 
         <div className="form-group">
-          <label>Tipos de reporte:</label>
+          <label>Tipo de reporte:</label>
           <select
-            multiple
-            value={reportFilters.types || []}
-            onChange={(e) => {
-              const values = Array.from(e.target.selectedOptions, option => option.value as ReportType);
-              setReportFilters(prev => ({ ...prev, types: values }));
-            }}
+            value={selectedReportType}
+            onChange={(e) => setSelectedReportType(e.target.value)}
             className="filter-select"
           >
-            <option value={ReportType.SALES}>Ventas</option>
-            <option value={ReportType.PURCHASES}>Compras</option>
-            <option value={ReportType.COMBINED}>Combinado</option>
-            <option value={ReportType.FINANCIAL_SUMMARY}>Resumen Financiero</option>
+            <option value="">📋 Todos los tipos</option>
+            <option value={ReportType.SALES}>📈 Ventas</option>
+            <option value={ReportType.PURCHASES}>📉 Compras</option>
+            <option value={ReportType.COMBINED}>📊 Combinado</option>
+            <option value={ReportType.FINANCIAL_SUMMARY}>💰 Resumen Financiero</option>
           </select>
         </div>
 
         <div className="form-group">
-          <label>Estados:</label>
+          <label>Estado:</label>
           <select
-            multiple
-            value={reportFilters.statuses || []}
-            onChange={(e) => {
-              const values = Array.from(e.target.selectedOptions, option => option.value as ReportStatus);
-              setReportFilters(prev => ({ ...prev, statuses: values }));
-            }}
+            value={selectedReportStatus}
+            onChange={(e) => setSelectedReportStatus(e.target.value)}
             className="filter-select"
           >
-            <option value={ReportStatus.COMPLETED}>Completado</option>
-            <option value={ReportStatus.GENERATING}>Generando</option>
-            <option value={ReportStatus.FAILED}>Error</option>
-            <option value={ReportStatus.PENDING}>Pendiente</option>
+            <option value="">🔄 Todos los estados</option>
+            <option value={ReportStatus.COMPLETED}>✅ Completado</option>
+            <option value={ReportStatus.GENERATING}>🔄 Generando</option>
+            <option value={ReportStatus.FAILED}>❌ Error</option>
+            <option value={ReportStatus.PENDING}>⏳ Pendiente</option>
           </select>
         </div>
       </div>
@@ -443,10 +425,10 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
                 onChange={(e) => setReportFilters(prev => ({ ...prev, sortBy: e.target.value as any }))}
                 className="filter-select"
               >
-                <option value="generatedAt">Fecha de generación</option>
-                <option value="title">Título</option>
-                <option value="type">Tipo</option>
-                <option value="status">Estado</option>
+                <option value="generatedAt">📅 Fecha de generación</option>
+                <option value="title">📝 Título</option>
+                <option value="type">📊 Tipo</option>
+                <option value="status">🔄 Estado</option>
               </select>
             </div>
 
@@ -457,8 +439,8 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
                 onChange={(e) => setReportFilters(prev => ({ ...prev, sortOrder: e.target.value as 'asc' | 'desc' }))}
                 className="filter-select"
               >
-                <option value="desc">Descendente</option>
-                <option value="asc">Ascendente</option>
+                <option value="desc">⬇️ Descendente</option>
+                <option value="asc">⬆️ Ascendente</option>
               </select>
             </div>
           </div>
@@ -491,13 +473,13 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
             }))}
             className="filter-select"
           >
-            <option value="all">Todos los tipos</option>
-            <option value={MovementType.PURCHASE}>Compras</option>
-            <option value={MovementType.SALE}>Ventas</option>
-            <option value={MovementType.ADJUSTMENT}>Ajustes</option>
-            <option value={MovementType.RETURN}>Devoluciones</option>
-            <option value={MovementType.EXPIRED}>Vencidos</option>
-            <option value={MovementType.DAMAGED}>Dañados</option>
+            <option value="all">📋 Todos los tipos</option>
+            <option value={MovementType.PURCHASE}>📦 Compras</option>
+            <option value={MovementType.SALE}>💰 Ventas</option>
+            <option value={MovementType.ADJUSTMENT}>⚙️ Ajustes</option>
+            <option value={MovementType.RETURN}>↩️ Devoluciones</option>
+            <option value={MovementType.EXPIRED}>⏰ Vencidos</option>
+            <option value={MovementType.DAMAGED}>⚠️ Dañados</option>
           </select>
         </div>
       </div>
@@ -575,118 +557,6 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
     </div>
   );
 
-  const renderExportFilters = () => (
-    <div className="filter-section">
-      <div className="filter-controls">
-        <div className="form-group">
-          <label>Buscar en nombre:</label>
-          <input
-            type="text"
-            value={exportFilters.searchTerm || ''}
-            onChange={(e) => setExportFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
-            placeholder="Buscar exportaciones..."
-            className="search-input"
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Formatos:</label>
-          <select
-            multiple
-            value={exportFilters.formats || []}
-            onChange={(e) => {
-            const values = Array.from(e.target.selectedOptions, option => option.value as ExportFormat);
-            setExportFilters(prev => ({ ...prev, formats: values }));
-            }}
-            className="filter-select"
-          >
-            <option value="pdf">PDF</option>
-            <option value="excel">Excel</option>
-            <option value="csv">CSV</option>
-            <option value="json">JSON</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label>Estados:</label>
-          <select
-            multiple
-            value={exportFilters.statuses || []}
-            onChange={(e) => {
-            const values = Array.from(e.target.selectedOptions, option => option.value as ExportHistoryStatus);
-            setExportFilters(prev => ({ ...prev, statuses: values }));
-            }}
-            className="filter-select"
-          >
-            <option value="completed">Completado</option>
-            <option value="failed">Error</option>
-            <option value="expired">Expirado</option>
-          </select>
-        </div>
-      </div>
-
-      {showAdvancedFilters && (
-        <div className="advanced-filters">
-          <div className="filter-controls">
-            <div className="form-group">
-              <label>Fecha desde:</label>
-              <input
-                type="date"
-                value={exportFilters.startDate?.toISOString().split('T')[0] || ''}
-                onChange={(e) => setExportFilters(prev => ({ 
-                  ...prev, 
-                  startDate: e.target.value ? new Date(e.target.value) : undefined 
-                }))}
-                className="filter-select"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Fecha hasta:</label>
-              <input
-                type="date"
-                value={exportFilters.endDate?.toISOString().split('T')[0] || ''}
-                onChange={(e) => setExportFilters(prev => ({ 
-                  ...prev, 
-                  endDate: e.target.value ? new Date(e.target.value) : undefined 
-                }))}
-                className="filter-select"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Tamaño mínimo (KB):</label>
-              <input
-                type="number"
-                value={exportFilters.minFileSize || ''}
-                onChange={(e) => setExportFilters(prev => ({ 
-                  ...prev, 
-                  minFileSize: e.target.value ? parseFloat(e.target.value) : undefined 
-                }))}
-                placeholder="0"
-                className="filter-select"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Tamaño máximo (KB):</label>
-              <input
-                type="number"
-                value={exportFilters.maxFileSize || ''}
-                onChange={(e) => setExportFilters(prev => ({ 
-                  ...prev, 
-                  maxFileSize: e.target.value ? parseFloat(e.target.value) : undefined 
-                }))}
-                placeholder="Sin límite"
-                className="filter-select"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   const renderPresets = () => (
     <div className="presets-section">
       <h3>⚡ Búsquedas Rápidas</h3>
@@ -724,12 +594,45 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
   );
 
   const renderResults = () => {
+    if (searching) {
+      return (
+        <div className="loading-section">
+          <div className="loading-spinner">
+            <span>🔄</span>
+            <p>Buscando {searchType}...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="error-section">
+          <div className="error-icon">⚠️</div>
+          <h3>Error en la búsqueda</h3>
+          <p>{error}</p>
+          <button 
+            className="btn btn-primary"
+            onClick={() => setError(null)}
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+
     if (searchResults.length === 0) {
       return (
         <div className="no-results">
           <div className="no-results-icon">🔍</div>
           <h3>No se encontraron resultados</h3>
-          <p>Prueba ajustando los filtros de búsqueda.</p>
+          <p>Prueba ajustando los filtros de búsqueda o ejecuta una nueva búsqueda.</p>
+          <button 
+            className="btn btn-primary"
+            onClick={executeSearch}
+          >
+            🔍 Buscar
+          </button>
         </div>
       );
     }
@@ -738,7 +641,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
       <div className="search-results">
         <div className="results-header">
           <h3>📋 Resultados de Búsqueda</h3>
-          <p>Se encontraron <strong>{searchResults.length}</strong> resultados</p>
+          <p>Se encontraron <strong>{searchResults.length}</strong> resultados para <strong>{searchType}</strong></p>
         </div>
 
         <div className="table-container">
@@ -765,16 +668,6 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
                     <th>Acciones</th>
                   </>
                 )}
-                {searchType === 'exports' && (
-                  <>
-                    <th>Nombre</th>
-                    <th>Formato</th>
-                    <th>Tamaño</th>
-                    <th>Estado</th>
-                    <th>Fecha</th>
-                    <th>Acciones</th>
-                  </>
-                )}
               </tr>
             </thead>
             <tbody>
@@ -783,8 +676,10 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
                   {searchType === 'reports' && (
                     <>
                       <td>
-                        <strong>{(item as TransactionReport).title}</strong>
-                        <small>{(item as TransactionReport).description}</small>
+                        <div className="item-title">
+                          <strong>{(item as TransactionReport).title}</strong>
+                          <small>{(item as TransactionReport).description}</small>
+                        </div>
                       </td>
                       <td>
                         <span className="status-badge secondary">
@@ -796,7 +691,12 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
                           {(item as TransactionReport).status}
                         </span>
                       </td>
-                      <td>{(item as TransactionReport).generatedAt.toLocaleDateString('es-CL')}</td>
+                      <td>
+                        <div className="date-cell">
+                          <span>{(item as TransactionReport).generatedAt.toLocaleDateString('es-CL')}</span>
+                          <small>{(item as TransactionReport).generatedAt.toLocaleTimeString('es-CL')}</small>
+                        </div>
+                      </td>
                       <td>
                         <button 
                           className="btn btn-sm btn-info"
@@ -804,6 +704,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
                             setSelectedItem(item);
                             setShowDetailsModal(true);
                           }}
+                          title="Ver detalles"
                         >
                           👁️
                         </button>
@@ -812,19 +713,39 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
                   )}
                   {searchType === 'movements' && (
                     <>
-                      <td>{(item as any).date.toLocaleDateString('es-CL')}</td>
                       <td>
-                        <strong>{(item as any).productName}</strong>
-                        <small>{(item as any).productCode}</small>
+                        <div className="date-cell">
+                          <span>{(item as any).date?.toLocaleDateString('es-CL') || 'Sin fecha'}</span>
+                          <small>{(item as any).date?.toLocaleTimeString('es-CL') || ''}</small>
+                        </div>
                       </td>
                       <td>
-                        <span className={`status-badge ${getStatusColor((item as any).type)}`}>
-                          {(item as any).type}
+                        <div className="product-cell">
+                          <strong>{(item as any).productName || 'Sin nombre'}</strong>
+                          <small>{(item as any).productCode || 'Sin código'}</small>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${getStatusColor((item as any).type || '')}`}>
+                          {(item as any).type || 'Sin tipo'}
                         </span>
                       </td>
-                      <td>{(item as any).quantity}</td>
-                      <td>{(item as any).totalValue ? formatCurrency((item as any).totalValue) : '-'}</td>
-                      <td>{(item as any).userName}</td>
+                      <td>
+                        <span className="quantity-badge">
+                          {(item as any).quantity || 0}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="price-text">
+                          {(item as any).totalValue ? formatCurrency((item as any).totalValue) : '-'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="user-cell">
+                          <span>{(item as any).userName || 'Sin usuario'}</span>
+                          <small>{(item as any).userEmail || ''}</small>
+                        </div>
+                      </td>
                       <td>
                         <button 
                           className="btn btn-sm btn-info"
@@ -832,37 +753,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
                             setSelectedItem(item);
                             setShowDetailsModal(true);
                           }}
-                        >
-                          👁️
-                        </button>
-                      </td>
-                    </>
-                  )}
-                  {searchType === 'exports' && (
-                    <>
-                      <td>
-                        <strong>{(item as any).result.fileName}</strong>
-                        <small>{(item as any).configName}</small>
-                      </td>
-                      <td>
-                        <span className="status-badge secondary">
-                          {(item as any).format.toUpperCase()}
-                        </span>
-                      </td>
-                      <td>{((item as any).fileSize / 1024).toFixed(1)} KB</td>
-                      <td>
-                        <span className={`status-badge ${getStatusColor((item as any).status)}`}>
-                          {(item as any).status}
-                        </span>
-                      </td>
-                      <td>{(item as any).createdAt.toLocaleDateString('es-CL')}</td>
-                      <td>
-                        <button 
-                          className="btn btn-sm btn-info"
-                          onClick={() => {
-                            setSelectedItem(item);
-                            setShowDetailsModal(true);
-                          }}
+                          title="Ver detalles"
                         >
                           👁️
                         </button>
@@ -880,37 +771,274 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
 
   return (
     <div className="advanced-search">
-      <div className="section-header">
-        <h2>🔍 Búsqueda Avanzada</h2>
-        <div className="header-actions">
-          <button 
-            className="btn btn-secondary"
-            onClick={() => setShowSaveSearch(true)}
-            disabled={searchResults.length === 0}
-          >
-            💾 Guardar Búsqueda
-          </button>
+      <style>{`
+        .advanced-search {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 20px;
+          background: #f8fafc;
+          min-height: 100vh;
+          position: relative;
+        }
+        
+        .advanced-search-section {
+          background: white;
+          border-radius: 16px;
+          padding: 24px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e2e8f0;
+          position: relative;
+          z-index: 1;
+          margin-bottom: 0;
+        }
+        
+        .search-results-section {
+          background: white;
+          border-radius: 16px;
+          padding: 24px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e2e8f0;
+          position: relative;
+          z-index: 10;
+          margin-top: 8px;
+          animation: fadeInUp 0.4s ease-out;
+        }
+        
+        .search-state-section {
+          text-align: center;
+          padding: 60px 20px;
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e2e8f0;
+          position: relative;
+          z-index: 10;
+          margin-top: 8px;
+        }
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .search-input {
+          background: linear-gradient(to right, #ffffff 0%, #f8fafc 100%);
+          border: 2px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 12px 50px 12px 16px;
+          transition: all 0.2s ease;
+          background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3e%3ccircle cx='11' cy='11' r='8'/%3e%3cpath d='m21 21-4.35-4.35'/%3e%3c/svg%3e");
+          background-repeat: no-repeat;
+          background-position: right 16px center;
+          background-size: 20px;
+          width: 100%;
+          font-family: inherit;
+        }
+        
+        .search-input:focus {
+          border-color: #6366f1;
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+          background-color: white;
+          outline: none;
+        }
+        
+        .filter-select {
+          border: 2px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 12px 16px;
+          background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
+          transition: all 0.2s ease;
+          width: 100%;
+          font-family: inherit;
+          appearance: none;
+          background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23666' d='M2 0L0 2h4zm0 5L0 3h4z'/></svg>");
+          background-repeat: no-repeat;
+          background-position: right 12px center;
+          background-size: 12px;
+          padding-right: 40px;
+        }
+        
+        .filter-select:focus {
+          border-color: #6366f1;
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+          background-color: white;
+          outline: none;
+        }
+        
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          margin-bottom: 16px;
+        }
+        
+        .form-group label {
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 8px;
+          display: block;
+          font-size: 0.875rem;
+        }
+        
+        .filter-controls {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 20px;
+          margin-bottom: 20px;
+        }
+        
+        .advanced-filters {
+          border-top: 2px solid #f1f5f9;
+          padding-top: 20px;
+          margin-top: 20px;
+          animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .type-btn {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 20px;
+          border: 2px solid #e2e8f0;
+          background: #f8fafc;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          text-align: left;
+          font-family: inherit;
+          width: 100%;
+        }
+        
+        .type-btn:hover {
+          transform: translateY(-2px);
+          border-color: #6366f1;
+          background: white;
+          box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
+        }
+        
+        .type-btn.active {
+          border-color: #6366f1;
+          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+          color: white;
+          box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+        }
+        
+        .type-icon {
+          font-size: 2.5rem;
+          transition: transform 0.3s ease;
+          min-width: 60px;
+          text-align: center;
+        }
+        
+        .type-btn.active .type-icon {
+          transform: scale(1.1);
+        }
+        
+        .type-buttons {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 16px;
+        }
+        
+        .search-actions {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 12px;
+          margin-top: 24px;
+          padding-top: 20px;
+          border-top: 2px solid #f1f5f9;
+          background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+          border-radius: 8px;
+          padding: 20px;
+        }
+        
+        .search-actions .btn {
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          transition: all 0.3s ease;
+        }
+        
+        .search-actions .btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .search-actions .btn-primary {
+          font-size: 1rem;
+          font-weight: 700;
+          padding: 14px 32px;
+        }
+        
+        @media (max-width: 768px) {
+          .search-actions {
+            flex-direction: column;
+            gap: 8px;
+          }
           
-          <button 
-            className="btn btn-primary"
-            onClick={executeSearch}
-            disabled={searching}
-          >
-            {searching ? '🔄 Buscando...' : '🔍 Buscar'}
-          </button>
+          .search-actions .btn {
+            width: 100%;
+            max-width: 300px;
+          }
+        }
+      `}</style>
+
+      <div className="advanced-search-section">
+        <div className="section-header">
+          <h2>🔍 Búsqueda Avanzada</h2>
+          <div className="header-actions">
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setShowSaveSearch(true)}
+              disabled={searchResults.length === 0}
+            >
+              💾 Guardar Búsqueda
+            </button>
+            
+            <button 
+              className="btn btn-primary"
+              onClick={executeSearch}
+              disabled={searching}
+            >
+              {searching ? '🔄 Buscando...' : '🔍 Buscar'}
+            </button>
+          </div>
         </div>
+
+        {error && (
+          <div className="error-messages">
+            <p className="error-message">⚠️ {error}</p>
+          </div>
+        )}
       </div>
 
-      {error && (
-        <div className="error-messages">
-          <p className="error-message">{error}</p>
-        </div>
-      )}
+      <div className="advanced-search-section">
+        {renderSearchTypeSelector()}
+      </div>
 
-      {renderSearchTypeSelector()}
-      {renderPresets()}
+      <div className="advanced-search-section">
+        {renderPresets()}
+      </div>
 
-      <div className="filters-container">
+      <div className="advanced-search-section">
         <div className="filters-header">
           <h3>⚙️ Filtros de Búsqueda</h3>
           <div className="filter-actions">
@@ -931,16 +1059,54 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
 
         {searchType === 'reports' && renderReportFilters()}
         {searchType === 'movements' && renderMovementFilters()}
-        {searchType === 'exports' && renderExportFilters()}
+
+        <div className="search-actions">
+          <button 
+            className="btn btn-secondary"
+            onClick={clearAllFilters}
+          >
+            🗑️ Limpiar Todos los Filtros
+          </button>
+          
+          <button 
+            className="btn btn-primary"
+            onClick={executeSearch}
+            disabled={searching}
+            style={{ minWidth: '200px' }}
+          >
+            {searching ? '🔄 Buscando...' : '🔍 Ejecutar Búsqueda'}
+          </button>
+          
+          <button 
+            className="btn btn-secondary"
+            onClick={() => setShowSaveSearch(true)}
+            disabled={searchResults.length === 0}
+          >
+            💾 Guardar
+          </button>
+        </div>
       </div>
 
-      {searching ? (
-        <div className="loading-spinner">Realizando búsqueda...</div>
-      ) : (
-        renderResults()
+      {(searching || error || searchResults.length > 0) && (
+        <div className="search-results-section">
+          {renderResults()}
+        </div>
       )}
 
-      {/* Modal para guardar búsqueda */}
+      {!searching && !error && searchResults.length === 0 && (
+        <div className="search-state-section">
+          <div className="no-results-icon">🔍</div>
+          <h3>Listo para buscar</h3>
+          <p>Configura los filtros y presiona el botón "Buscar" para ver los resultados.</p>
+          <button 
+            className="btn btn-primary"
+            onClick={executeSearch}
+          >
+            🔍 Buscar
+          </button>
+        </div>
+      )}
+
       {showSaveSearch && (
         <ReportModal
           title="💾 Guardar Búsqueda"
@@ -961,12 +1127,19 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
             
             <div className="search-preview">
               <h4>📋 Filtros actuales:</h4>
-              <pre>{JSON.stringify(
-                searchType === 'reports' ? reportFilters :
-                searchType === 'movements' ? movementFilters :
-                exportFilters, 
-                null, 2
-              )}</pre>
+              <pre style={{ 
+                background: '#f5f5f5', 
+                padding: '10px', 
+                borderRadius: '4px', 
+                fontSize: '12px',
+                maxHeight: '200px',
+                overflow: 'auto'
+              }}>
+                {JSON.stringify(
+                  searchType === 'reports' ? reportFilters : movementFilters, 
+                  null, 2
+                )}
+              </pre>
             </div>
           </div>
           
@@ -988,14 +1161,23 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
         </ReportModal>
       )}
 
-      {/* Modal para detalles */}
       {selectedItem && showDetailsModal && (
         <ReportModal
           title="📋 Detalles del Elemento"
           onClose={() => setShowDetailsModal(false)}
         >
           <div className="item-details">
-            <pre>{JSON.stringify(selectedItem, null, 2)}</pre>
+            <pre style={{ 
+              background: '#f5f5f5', 
+              padding: '15px', 
+              borderRadius: '4px', 
+              fontSize: '12px',
+              maxHeight: '400px',
+              overflow: 'auto',
+              whiteSpace: 'pre-wrap'
+            }}>
+              {JSON.stringify(selectedItem, null, 2)}
+            </pre>
           </div>
         </ReportModal>
       )}

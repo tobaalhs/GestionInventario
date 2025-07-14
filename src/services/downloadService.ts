@@ -1,10 +1,9 @@
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable'; // ✅ Importación explícita de autoTable
+import 'jspdf-autotable'; 
 import { TransactionReport, TransactionData } from '../interfaces/Report';
 import { getTransactionData } from './reportService';
 
-// ✅ Extender jsPDF para incluir autoTable (MEJORADO)
 declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
@@ -26,7 +25,6 @@ export const downloadReport = async (report: TransactionReport, isTokenDownload:
       transactionCount: report.transactionData?.length || 0
     });
 
-    // ✅ Cargar datos de transacciones dinámicamente SOLO si no los tiene
     let transactionData = report.transactionData || [];
     
     if (transactionData.length === 0 && report.filters) {
@@ -95,7 +93,7 @@ export const downloadReport = async (report: TransactionReport, isTokenDownload:
 };
 
 /**
- * ✅ NUEVA: Función específica para descarga con token que NO vuelve a cargar datos
+ * Función específica para descarga con token que NO vuelve a cargar datos
  */
 export const downloadReportWithToken = async (report: TransactionReport) => {
   try {
@@ -106,7 +104,7 @@ export const downloadReportWithToken = async (report: TransactionReport) => {
       reportData: report
     });
 
-    // ✅ USAR DATOS YA CARGADOS - NO volver a cargar
+
     const transactionData = report.transactionData || [];
     
     console.log('📊 Datos de transacciones para Excel:', {
@@ -116,7 +114,7 @@ export const downloadReportWithToken = async (report: TransactionReport) => {
       hasStatistics: !!report.statistics
     });
 
-    // ✅ IMPORTANTE: Si no hay transactionData pero hay filtros, usar downloadReport normal
+    //  IMPORTANTE: Si no hay transactionData pero hay filtros, usar downloadReport normal
     if (transactionData.length === 0 && report.filters) {
       console.log('⚠️ No hay transactionData, usando downloadReport para cargar datos...');
       return await downloadReport(report, true);
@@ -127,7 +125,7 @@ export const downloadReportWithToken = async (report: TransactionReport) => {
       throw new Error('Este reporte no contiene datos para exportar.');
     }
 
-    // ✅ Preparar datos para descarga DIRECTAMENTE
+    // Preparar datos para descarga DIRECTAMENTE
     const exportData = {
       reportInfo: {
         title: report.title,
@@ -139,11 +137,11 @@ export const downloadReportWithToken = async (report: TransactionReport) => {
         downloadType: 'Token Download'
       },
       summary: report.summary,
-      transactions: transactionData, // ✅ Usar datos ya cargados
+      transactions: transactionData, //  Usar datos ya cargados
       statistics: report.statistics
     };
 
-    console.log('✅ ExportData preparado para Excel:', {
+    console.log(' ExportData preparado para Excel:', {
       transactionsCount: exportData.transactions.length,
       hasSummary: !!exportData.summary,
       hasStatistics: !!exportData.statistics,
@@ -151,19 +149,19 @@ export const downloadReportWithToken = async (report: TransactionReport) => {
       firstTransactionInExport: exportData.transactions[0]
     });
 
-    // ✅ Descargar directamente
+    //  Descargar directamente
     await downloadReportAsExcel(exportData);
     
-    console.log('✅ Descarga con token completada exitosamente');
+    console.log('Descarga con token completada exitosamente');
     
   } catch (error) {
-    console.error('❌ Error en descarga con token:', error);
+    console.error(' Error en descarga con token:', error);
     throw error;
   }
 };
 
 /**
- * ✅ Función para formatear moneda chilena
+ *  Función para formatear moneda chilena
  */
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('es-CL', {
@@ -175,14 +173,14 @@ const formatCurrency = (amount: number): string => {
 };
 
 /**
- * ✅ Función para formatear números con separadores
+ *  Función para formatear números con separadores
  */
 const formatNumber = (num: number): string => {
   return num.toLocaleString('es-CL');
 };
 
 /**
- * ✅ Descargar reporte como Excel (CORREGIDA Y MEJORADA)
+ *  Descargar reporte como Excel (CORREGIDA Y MEJORADA)
  */
 export const downloadReportAsExcel = async (exportData: any) => {
   try {
@@ -194,7 +192,6 @@ export const downloadReportAsExcel = async (exportData: any) => {
 
     const workbook = XLSX.utils.book_new();
 
-    // ✅ HOJA 1: Información del Reporte (MEJORADA)
     const reportInfoData = [
       ['INFORMACIÓN DEL REPORTE'],
       [''],
@@ -204,13 +201,13 @@ export const downloadReportAsExcel = async (exportData: any) => {
       ['Período:', exportData.reportInfo.period],
       ['Generado el:', exportData.reportInfo.generatedAt],
       ['Generado por:', exportData.reportInfo.generatedBy],
-      ['Tipo de descarga:', exportData.reportInfo.downloadType || 'Standard'], // ✅ Nuevo campo
-      ['Descargado el:', new Date().toLocaleString('es-CL')] // ✅ Timestamp de descarga
+      ['Tipo de descarga:', exportData.reportInfo.downloadType || 'Standard'], 
+      ['Descargado el:', new Date().toLocaleString('es-CL')] 
     ];
 
     const reportInfoSheet = XLSX.utils.aoa_to_sheet(reportInfoData);
     
-    // ✅ Aplicar formato a la hoja de información (CORREGIDO)
+    //  Aplicar formato a la hoja de información (CORREGIDO)
     if (!reportInfoSheet['!cols']) {
       reportInfoSheet['!cols'] = [];
     }
@@ -222,7 +219,7 @@ export const downloadReportAsExcel = async (exportData: any) => {
     
     XLSX.utils.book_append_sheet(workbook, reportInfoSheet, 'Información');
 
-    // ✅ HOJA 2: Resumen (MEJORADA)
+    //  HOJA 2: Resumen (MEJORADA)
     if (exportData.summary) {
       const summaryData = [
         ['RESUMEN DEL REPORTE'],
@@ -247,7 +244,6 @@ export const downloadReportAsExcel = async (exportData: any) => {
           formatCurrency(exportData.summary.purchasesSummary.averageAmount) : formatCurrency(0)]
       ];
 
-      // ✅ Agregar información de tendencias si existe
       if (exportData.summary.trends) {
         summaryData.push(['']);
         summaryData.push(['📊 TENDENCIAS']);
@@ -258,8 +254,7 @@ export const downloadReportAsExcel = async (exportData: any) => {
       }
 
       const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-      
-      // ✅ Aplicar formato (CORREGIDO)
+
       if (!summarySheet['!cols']) {
         summarySheet['!cols'] = [];
       }
@@ -272,7 +267,6 @@ export const downloadReportAsExcel = async (exportData: any) => {
       XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumen');
     }
 
-    // ✅ HOJA 3: Transacciones (MEJORADA - SIEMPRE SE INCLUYE SI HAY DATOS)
     if (exportData.transactions && exportData.transactions.length > 0) {
       console.log('📄 Generando hoja de Transacciones con', exportData.transactions.length, 'registros');
       
@@ -296,7 +290,7 @@ export const downloadReportAsExcel = async (exportData: any) => {
         transaction.transactionDate.toLocaleDateString('es-CL'),
         transaction.counterparty.name,
         transaction.counterparty.rut,
-        transaction.totalAmount, // ✅ Número para Excel
+        transaction.totalAmount, 
         transaction.items.length,
         transaction.status === 'completed' ? 'Completado' : transaction.status,
         transaction.user.name,
@@ -307,7 +301,7 @@ export const downloadReportAsExcel = async (exportData: any) => {
       const transactionData = [transactionHeaders, ...transactionRows];
       const transactionSheet = XLSX.utils.aoa_to_sheet(transactionData);
       
-      // ✅ Aplicar formato a columnas (CORREGIDO)
+
       if (!transactionSheet['!cols']) {
         transactionSheet['!cols'] = [];
       }
@@ -332,7 +326,7 @@ export const downloadReportAsExcel = async (exportData: any) => {
       console.log('⚠️ No hay transacciones detalladas para incluir en Excel');
     }
 
-    // ✅ HOJA 4: Detalle de Items (SIEMPRE SE INCLUYE SI HAY TRANSACCIONES)
+
     if (exportData.transactions && exportData.transactions.length > 0) {
       console.log('📄 Generando hoja de Detalle Items...');
       
@@ -371,7 +365,7 @@ export const downloadReportAsExcel = async (exportData: any) => {
         const itemData = [itemHeaders, ...itemRows];
         const itemSheet = XLSX.utils.aoa_to_sheet(itemData);
         
-        // ✅ Aplicar formato (CORREGIDO)
+
         if (!itemSheet['!cols']) {
           itemSheet['!cols'] = [];
         }
@@ -395,7 +389,7 @@ export const downloadReportAsExcel = async (exportData: any) => {
       }
     }
 
-    // ✅ HOJA 5: Estadísticas (MEJORADA)
+
     if (exportData.statistics) {
       const statisticsData = [['ESTADÍSTICAS DEL REPORTE'], ['']];
 
@@ -477,7 +471,7 @@ export const downloadReportAsExcel = async (exportData: any) => {
 
       const statisticsSheet = XLSX.utils.aoa_to_sheet(statisticsData);
       
-      // ✅ Aplicar formato (CORREGIDO)
+
       if (!statisticsSheet['!cols']) {
         statisticsSheet['!cols'] = [];
       }
@@ -495,12 +489,12 @@ export const downloadReportAsExcel = async (exportData: any) => {
       XLSX.utils.book_append_sheet(workbook, statisticsSheet, 'Estadísticas');
     }
 
-    // ✅ Generar nombre de archivo mejorado
+
     const timestamp = new Date().toISOString().split('T')[0];
     const timeString = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
     const fileName = `${exportData.reportInfo.code}_${timestamp}_${timeString}.xlsx`;
     
-    // ✅ Descargar archivo
+
     XLSX.writeFile(workbook, fileName);
     
     console.log('✅ Reporte Excel descargado exitosamente:', fileName);
@@ -513,13 +507,13 @@ export const downloadReportAsExcel = async (exportData: any) => {
 };
 
 /**
- * ✅ NUEVO: Descargar reporte como PDF COMPLETAMENTE RENOVADO CON TODA LA INFORMACIÓN
+ * NUEVO: Descargar reporte como PDF COMPLETAMENTE RENOVADO CON TODA LA INFORMACIÓN
  */
 export const downloadReportAsPDF = async (exportData: any) => {
   try {
     console.log('📄 Iniciando generación de PDF completo...');
     
-    // ✅ Verificaciones de librerías
+
     if (typeof jsPDF === 'undefined') {
       throw new Error('jsPDF no está disponible. Verifica que la librería esté instalada.');
     }
@@ -527,13 +521,13 @@ export const downloadReportAsPDF = async (exportData: any) => {
     const doc = new jsPDF();
     console.log('📄 jsPDF inicializado correctamente');
     
-    // ✅ Configuración inicial
+    //  Configuración inicial
     const margin = 15;
     let yPosition = margin;
     const pageHeight = doc.internal.pageSize.height;
     const usableHeight = pageHeight - (margin * 2);
     
-    // ✅ Función auxiliar para agregar nueva página si es necesario
+    // Función auxiliar para agregar nueva página si es necesario
     const checkPageBreak = (neededSpace: number = 20) => {
       if (yPosition + neededSpace > pageHeight - margin) {
         doc.addPage();
@@ -543,7 +537,7 @@ export const downloadReportAsPDF = async (exportData: any) => {
       return false;
     };
 
-    // ✅ Función para agregar texto con wrap automático
+    //  Función para agregar texto con wrap automático
     const addWrappedText = (text: string, x: number, fontSize: number = 10, maxWidth: number = 180) => {
       doc.setFontSize(fontSize);
       const lines = doc.splitTextToSize(text, maxWidth);
@@ -554,7 +548,7 @@ export const downloadReportAsPDF = async (exportData: any) => {
       }
     };
 
-    // ✅ PÁGINA 1: PORTADA Y INFORMACIÓN BÁSICA
+
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
     addWrappedText(exportData.reportInfo.title || 'Reporte de Transacciones', margin, 20);
@@ -582,7 +576,6 @@ export const downloadReportAsPDF = async (exportData: any) => {
     
     yPosition += 15;
 
-    // ✅ SECCIÓN 2: RESUMEN EJECUTIVO COMPLETO
     if (exportData.summary) {
       checkPageBreak(30);
       doc.setFontSize(16);
@@ -677,7 +670,7 @@ export const downloadReportAsPDF = async (exportData: any) => {
       }
     }
 
-    // ✅ SECCIÓN 3: TABLA DE TRANSACCIONES DETALLADA (MEJORADA)
+
     if (exportData.transactions && exportData.transactions.length > 0) {
       doc.addPage();
       yPosition = margin;
@@ -691,7 +684,6 @@ export const downloadReportAsPDF = async (exportData: any) => {
       const maxTransactions = 50;
       const displayTransactions = exportData.transactions.slice(0, maxTransactions);
       
-      // ✅ Verificar que autoTable esté disponible
       if (doc.autoTable && typeof doc.autoTable === 'function') {
         try {
           const tableData = displayTransactions.map((transaction: any) => {
@@ -786,7 +778,6 @@ export const downloadReportAsPDF = async (exportData: any) => {
       }
     }
 
-    // ✅ SECCIÓN 4: ESTADÍSTICAS DETALLADAS
     if (exportData.statistics) {
       doc.addPage();
       yPosition = margin;
@@ -886,7 +877,7 @@ export const downloadReportAsPDF = async (exportData: any) => {
       }
     }
 
-    // ✅ Nota final
+
     doc.addPage();
     yPosition = margin;
     doc.setFontSize(12);
@@ -910,7 +901,7 @@ export const downloadReportAsPDF = async (exportData: any) => {
       yPosition += 7;
     });
 
-    // ✅ Descargar PDF
+
     const timestamp = new Date().toISOString().split('T')[0];
     const timeString = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
     const fileName = `${(exportData.reportInfo.code || 'reporte').replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}_${timeString}.pdf`;
@@ -940,7 +931,7 @@ export const downloadReportAsPDF = async (exportData: any) => {
 };
 
 /**
- * ✅ Función de validación de datos para exportación (MEJORADA)
+ *  Función de validación de datos para exportación (MEJORADA)
  */
 export const validateReportDataForExport = (report: TransactionReport): boolean => {
   console.log('🔍 Validando datos para exportación:', {
@@ -953,7 +944,7 @@ export const validateReportDataForExport = (report: TransactionReport): boolean 
     summaryTotalTransactions: report.summary?.totalTransactions || 0
   });
 
-  // ✅ Verificaciones más flexibles
+
   const hasData = (
     (report.transactionData && report.transactionData.length > 0) ||
     (report.summary && report.summary.totalTransactions > 0) ||
@@ -970,7 +961,7 @@ export const validateReportDataForExport = (report: TransactionReport): boolean 
 };
 
 /**
- * ✅ Función para exportar datos específicos (MEJORADA)
+ * Función para exportar datos específicos (MEJORADA)
  */
 export const exportCustomData = async (
   data: any[], 
@@ -988,7 +979,7 @@ export const exportCustomData = async (
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
     
-    // ✅ Aplicar formato automático a las columnas (CORREGIDO)
+    // Aplicar formato automático a las columnas (CORREGIDO)
     if (!worksheet['!cols']) {
       worksheet['!cols'] = [];
     }

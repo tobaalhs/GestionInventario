@@ -67,7 +67,7 @@ export const createStockMovement = async (movementData: Omit<StockMovement, 'id'
 
     // Preparar datos del movimiento - LIMPIAR VALORES UNDEFINED
     const movement: any = {
-      type: movementData.type.toString(), // Asegurar que sea string
+      type: movementData.type.toString(), 
       productId: movementData.productId,
       productCode: movementData.productCode,
       productName: movementData.productName,
@@ -79,7 +79,6 @@ export const createStockMovement = async (movementData: Omit<StockMovement, 'id'
       createdAt: Timestamp.now()
     };
 
-    // ✅ Solo agregar campos opcionales si tienen valor
     if (movementData.unitPrice !== undefined && movementData.unitPrice !== null) {
       movement.unitPrice = movementData.unitPrice;
     }

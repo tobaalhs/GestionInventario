@@ -350,9 +350,9 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
   const goToPage = useCallback(async (page: number): Promise<void> => {
     if (page < 1 || page > totalPages) return;
     
-    const newFilters = { ...currentFiltersRef.current, page }; // ✅ Usar ref
+    const newFilters = { ...currentFiltersRef.current, page }; 
     await loadMovements(newFilters);
-  }, [totalPages]); // ✅ Solo totalPages como dependencia
+  }, [totalPages]); 
 
   /**
    * Ir a página siguiente
@@ -360,7 +360,7 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
   const nextPage = useCallback(async (): Promise<void> => {
     if (!hasNext) return;
     await goToPage(currentPage + 1);
-  }, [hasNext, currentPage, goToPage]); // ✅ Ahora goToPage es estable
+  }, [hasNext, currentPage, goToPage]); 
 
   /**
    * Ir a página anterior
@@ -368,7 +368,7 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
   const previousPage = useCallback(async (): Promise<void> => {
     if (!hasPrevious) return;
     await goToPage(currentPage - 1);
-  }, [hasPrevious, currentPage, goToPage]); // ✅ Ahora goToPage es estable
+  }, [hasPrevious, currentPage, goToPage]); 
 
   /**
    * Limpiar error
@@ -381,8 +381,8 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
    * Refrescar movimientos
    */
   const refreshMovements = useCallback(async (): Promise<void> => {
-    await loadMovements(currentFiltersRef.current); // ✅ Usar ref
-  }, [loadMovements]); // ✅ Ahora loadMovements es estable
+    await loadMovements(currentFiltersRef.current); 
+  }, [loadMovements]); 
 
   /**
    * Exportar movimientos
@@ -394,8 +394,6 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
 
       console.log(`📊 Exportando movimientos a ${format.toUpperCase()}...`);
       
-      // Esta función sería implementada usando el servicio de exportación
-      // Por ahora solo simula la funcionalidad
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       const fileName = `movimientos_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : format}`;
@@ -429,15 +427,13 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
   // Cargar movimientos iniciales al montar el componente
   useEffect(() => {
     loadMovements();
-  }, [loadMovements]); // ✅ Ahora loadMovements es estable
+  }, [loadMovements]); 
 
-  // ✅ ESPECÍFICO: Solo recargar cuando cambien filtros importantes
   useEffect(() => {
     if (currentFilters.startDate && currentFilters.endDate) {
-      // ✅ Solo cargar si realmente cambió algo importante
       const timeoutId = setTimeout(() => {
         loadMovements(currentFilters);
-      }, 100); // ✅ Pequeño delay para evitar llamadas múltiples
+      }, 100); 
       
       return () => clearTimeout(timeoutId);
     }
@@ -450,7 +446,7 @@ export const useMovementHistory = (): UseMovementHistoryReturn => {
     currentFilters.sortBy,
     currentFilters.sortOrder,
     currentFilters.page,
-    loadMovements // ✅ Ahora es estable
+    loadMovements 
   ]);
 
   // Limpiar error automáticamente después de 5 segundos

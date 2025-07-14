@@ -1,4 +1,3 @@
-// Modificaciones a User.ts
 export enum UserRole {
   ADMIN = 'admin',
   EMPLOYEE = 'employee'

@@ -754,7 +754,7 @@ export const addItemForPurchase = async (
   },
   userId: string,
   userEmail: string,
-  purchaseCode?: string // ✅ Agregar código de compra para el historial
+  purchaseCode?: string
 ): Promise<string> => {
   try {
     console.log('🏗️ Creando producto para compra:', itemData.name);
@@ -794,7 +794,7 @@ export const addItemForPurchase = async (
     
     console.log('✅ Producto creado exitosamente con ID:', docRef.id);
     
-    // ✅ REGISTRAR EN EL HISTORIAL - PRODUCTO CREADO EN COMPRA
+
     const historialChanges = [
       {
         field: 'Producto',
@@ -869,7 +869,7 @@ export const updateStockWithHistoryForPurchase = async (
       stockNuevo: newStock
     });
 
-    // ✅ REGISTRAR EN EL HISTORIAL ANTES DE ACTUALIZAR
+
     const historialChanges = [
       {
         field: 'Stock',
@@ -908,7 +908,7 @@ export const updateStockWithHistoryForPurchase = async (
 
     console.log('📝 Historial de stock actualizado registrado para:', currentData.name);
 
-    // ✅ NO actualizar el stock aquí - se hace en createStockMovement
+
     // Solo registramos el historial, el stock se actualiza en el movimiento
 
   } catch (error) {

@@ -103,7 +103,7 @@ const SupplierSelector: React.FC<SupplierSelectorProps> = ({
         console.log('Proveedor encontrado en BD:', existingSupplier);
         
         if (existingSupplier.isActive) {
-          // Proveedor activo encontrado - SELECCIONARLO AUTOMÁTICAMENTE
+          // Proveedor activo encontrado
           console.log('Proveedor activo encontrado, seleccionando automáticamente...');
           handleSelectSupplier(existingSupplier);
         } else {
@@ -149,8 +149,8 @@ const SupplierSelector: React.FC<SupplierSelectorProps> = ({
     console.log('Seleccionando proveedor:', supplier);
     
     const supplierData: SupplierFormData = {
-      id: supplier.id, // ✅ IMPORTANTE: Incluir el ID del proveedor existente
-      isNewSupplier: false, // ✅ IMPORTANTE: Marcar como NO nuevo
+      id: supplier.id, 
+      isNewSupplier: false, 
       rut: supplier.rut,
       name: supplier.name,
       contact: supplier.contact,
@@ -211,8 +211,8 @@ const SupplierSelector: React.FC<SupplierSelectorProps> = ({
     if (!validateNewSupplierForm()) return;
 
     const supplierData: SupplierFormData = {
-      id: undefined, // ✅ Sin ID para nuevos proveedores
-      isNewSupplier: true, // ✅ Marcar como nuevo
+      id: undefined, 
+      isNewSupplier: true, 
       rut: newSupplierData.rut,
       name: newSupplierData.name,
       contact: newSupplierData.contact,

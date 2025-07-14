@@ -622,7 +622,7 @@ export interface ExportSchedule {
   };
   
   // Zona horaria
-  timezone: string; // ej: 'America/Santiago'
+  timezone: string;
   
   // Configuración adicional
   skipWeekends: boolean;

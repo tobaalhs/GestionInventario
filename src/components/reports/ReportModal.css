@@ -16,7 +16,7 @@
   background: white;
   border-radius: 12px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  max-height: 90vh; /* ✅ Mantener altura máxima */
+  max-height: 90vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -40,7 +40,7 @@
 
 .modal-xlarge {
   width: 100%;
-  max-width: 1200px; /* ✅ Aumentar para detalles de reportes */
+  max-width: 1200px;
 }
 
 .modal-header {
@@ -50,7 +50,7 @@
   align-items: center;
   justify-content: space-between;
   background: #f9fafb;
-  flex-shrink: 0; /* ✅ No permitir que se encoja */
+  flex-shrink: 0;
 }
 
 .modal-title {
@@ -86,138 +86,117 @@
 
 .modal-body {
   padding: 24px;
-  overflow-y: auto; /* ✅ Scroll interno */
-  flex: 1; /* ✅ Tomar todo el espacio disponible */
-  min-height: 0; /* ✅ Permitir que se encoja si es necesario */
-}
-
-/* ✅ NUEVOS ESTILOS PARA CONTENIDO SCROLLEABLE */
-.modal-body .table-container {
-  max-height: 400px;
   overflow-y: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  margin: 15px 0;
+  flex: 1;
+  min-height: 0;
 }
 
-.modal-body .table-container table {
-  margin: 0;
+/* Estilos específicos para el modal de descarga */
+.download-options {
+  padding: 16px;
 }
 
-.modal-body .table-container thead th {
-  position: sticky;
-  top: 0;
-  background: #f9fafb;
-  z-index: 1;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-/* ✅ MEJORAR SECCIONES DE CONTENIDO */
-.modal-body .transaction-data-section {
-  margin: 20px 0;
-  padding: 15px;
-  border: 1px solid #e5e7eb;
+.report-info {
+  background: #f8fafc;
   border-radius: 8px;
-  background: #fafafa;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
 }
 
-.modal-body .summary-section {
-  margin: 20px 0;
-  padding: 15px;
-  border: 1px solid #dbeafe;
-  border-radius: 8px;
-  background: #eff6ff;
-}
-
-.modal-body .summary-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-  margin: 15px 0;
-}
-
-.modal-body .stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: white;
-  border-radius: 6px;
-  border: 1px solid #e5e7eb;
-}
-
-.modal-body .stat-item label {
-  font-weight: 500;
-  color: #6b7280;
-  margin: 0;
-}
-
-.modal-body .stat-item span {
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.modal-body .subsummary {
-  margin: 15px 0;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 6px;
-  border-left: 4px solid #3b82f6;
-}
-
-.modal-body .subsummary h5 {
-  margin: 0 0 8px 0;
-  color: #1f2937;
-  font-size: 0.9rem;
-}
-
-.modal-body .subsummary p {
-  margin: 0;
+.report-info p {
+  margin: 8px 0;
   color: #4b5563;
   font-size: 0.9rem;
 }
 
-/* ✅ ESTILOS PARA CARGA DE DATOS */
-.modal-body .loading-section {
-  text-align: center;
-  padding: 40px 20px;
-  background: #f9fafb;
+.report-info strong {
+  color: #1e293b;
+  min-width: 120px;
+  display: inline-block;
+}
+
+.format-options h4 {
+  margin: 0 0 16px 0;
+  color: #1e293b;
+  font-size: 1.1rem;
+}
+
+.format-descriptions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.format-description {
+  background: #f8fafc;
   border-radius: 8px;
-  margin: 15px 0;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
 }
 
-.modal-body .loading-spinner {
-  color: #6b7280;
-  font-style: italic;
+.format-description h5 {
+  margin: 0 0 8px 0;
+  color: #1e40af;
+  font-size: 1rem;
 }
 
-.modal-body .no-data-section {
-  text-align: center;
-  padding: 30px 20px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  margin: 15px 0;
+.format-description p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.875rem;
 }
 
-.modal-body .no-data-section h4 {
-  color: #991b1b;
-  margin: 0 0 10px 0;
-}
-
-.modal-body .no-data-section p {
-  color: #7f1d1d;
-  margin: 0 0 15px 0;
-}
-
-.modal-body .more-records {
-  text-align: center;
-  padding: 10px;
-  color: #6b7280;
-  font-style: italic;
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
   background: #f9fafb;
 }
 
+.modal-actions .btn {
+  min-width: 150px;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #5856eb 0%, #7c3aed 100%);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
   .modal-overlay {
     padding: 10px;
@@ -227,248 +206,36 @@
     max-height: 95vh;
   }
 
-  .modal-small,
-  .modal-medium,
-  .modal-large,
-  .modal-xlarge {
-    width: 100%;
-    max-width: none;
-  }
-
-  .modal-header {
-    padding: 16px;
-  }
-
-  .modal-body {
-    padding: 16px;
-  }
-
-  .modal-title {
-    font-size: 1.125rem;
-  }
-
-  /* ✅ RESPONSIVE PARA TABLAS */
-  .modal-body .table-container {
-    max-height: 300px;
-  }
-
-  .modal-body .summary-stats {
+  .format-descriptions {
     grid-template-columns: 1fr;
   }
 
-  .modal-body .stat-item {
+  .modal-actions {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
   }
 }
 
-/* Estilos globales para contenido del modal */
-.modal-body .form-group {
-  margin-bottom: 16px;
+
+.btn-group {
+  position: relative; 
 }
 
-.modal-body .form-group label {
-  display: block;
-  margin-bottom: 4px;
-  font-weight: 500;
-  color: #374151;
-  font-size: 0.875rem;
+.dropdown-menu {
+  position: absolute;
+  top: 100%; 
+  left: 50%;
+  transform: translateX(-50%); 
+  min-width: 200px;
+  display: none; 
+  z-index: 1050;
 }
 
-.modal-body .filter-select,
-.modal-body .search-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  background: white;
-  transition: border-color 0.2s ease;
+.btn-group.show .dropdown-menu {
+  display: block; 
 }
 
-.modal-body .filter-select:focus,
-.modal-body .search-input:focus {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
 
-.modal-body .form-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.modal-body .form-options {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.modal-body .form-options label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: normal;
-  margin-bottom: 0;
-}
-
-.modal-body .form-options input[type="checkbox"] {
-  width: auto;
-  margin: 0;
-}
-
-.modal-body .modal-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
-  margin-top: 24px;
-  flex-shrink: 0; /* ✅ No permitir que se encoja */
-}
-
-.modal-body .btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.modal-body .btn-primary {
-  background-color: #6366f1;
-  color: white;
-  border-color: #6366f1;
-}
-
-.modal-body .btn-primary:hover:not(:disabled) {
-  background-color: #5856eb;
-  border-color: #5856eb;
-}
-
-.modal-body .btn-secondary {
-  background-color: #f3f4f6;
-  color: #374151;
-  border-color: #d1d5db;
-}
-
-.modal-body .btn-secondary:hover:not(:disabled) {
-  background-color: #e5e7eb;
-  border-color: #9ca3af;
-}
-
-.modal-body .btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.modal-body .detail-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-  padding: 16px;
-  background: #f9fafb;
-  border-radius: 8px;
-}
-
-.modal-body .detail-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-body .detail-group.full-width {
-  grid-column: 1 / -1;
-}
-
-.modal-body .detail-group label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
-}
-
-.modal-body .detail-group p {
-  margin: 0;
-  color: #1f2937;
-  font-weight: 500;
-}
-
-.modal-body .status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.modal-body .status-badge.success {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-.modal-body .status-badge.primary {
-  background-color: #dbeafe;
-  color: #1e40af;
-}
-
-.modal-body .status-badge.warning {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-.modal-body .status-badge.danger {
-  background-color: #fee2e2;
-  color: #991b1b;
-}
-
-.modal-body .status-badge.secondary {
-  background-color: #f3f4f6;
-  color: #374151;
-}
-
-.modal-body .quantity-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.modal-body .quantity-badge.positive {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-.modal-body .quantity-badge.negative {
-  background-color: #fee2e2;
-  color: #991b1b;
-}
-
-.modal-body .price-text {
-  font-weight: 600;
-  color: #059669;
-}
-
-.modal-body code {
-  background-color: #f3f4f6;
-  color: #1f2937;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-}

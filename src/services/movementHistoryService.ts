@@ -78,7 +78,7 @@ export const validateMovementFilters = (filters: MovementFilters): MovementFilte
 
   const safeFilters = {
     ...filters,
-    pageSize: filters.pageSize || 50, // ← Valor por defecto
+    pageSize: filters.pageSize || 50, 
     page: filters.page || 1
   };
 
@@ -148,7 +148,7 @@ export const validateMovementFilters = (filters: MovementFilters): MovementFilte
     isValid: errors.length === 0,
     errors,
     warnings,
-    appliedFilters: safeFilters // ← Devolver los filtros con valores seguros
+    appliedFilters: safeFilters
   };
 };
 
@@ -167,7 +167,7 @@ export const searchMovements = async (filters: MovementFilters): Promise<Movemen
 
     const db = getFirestore();
     
-    // ✅ CONSULTA SUPER SIMPLE - Solo fechas y ordenamiento por createdAt
+    // CONSULTA SUPER SIMPLE - Solo fechas y ordenamiento por createdAt
     let firebaseQuery = collection(db, 'stockMovements') as Query;
 
     // 1. Solo filtro por fechas (para minimizar índices requeridos)
@@ -186,61 +186,62 @@ export const searchMovements = async (filters: MovementFilters): Promise<Movemen
     firebaseQuery = query(firebaseQuery, orderBy('createdAt', 'desc'));
 
     // 3. Limitar resultados (traer más de lo necesario para filtrar en memoria)
-    const maxResults = Math.min((filters.pageSize || 50) * 3, 1000); // Traer 3x más para filtrar
+    const maxResults = Math.min((filters.pageSize || 50) * 3, 1000);
     firebaseQuery = query(firebaseQuery, limit(maxResults));
 
     console.log('🔥 Ejecutando consulta simple de Firestore...');
     const snapshot = await getDocs(firebaseQuery);
     
-    // ✅ CONVERTIR DATOS CON DEBUGGING
-let allMovements = snapshot.docs.map(doc => {
-  const data = doc.data();
-  
-  // 🔍 DEBUG: Ver qué campos de stock existen
-  console.log('🔍 Datos del documento:', {
-    id: doc.id,
-    resultingStock: data.resultingStock,
-    newStock: data.newStock,
-    currentStock: data.currentStock,
-    stock: data.stock,
-    finalStock: data.finalStock,
-    // Ver todos los campos para debuggear
-    allFields: Object.keys(data)
-  });
-  
-  return {
-    id: doc.id,
-    date: data.createdAt?.toDate() || new Date(),
-    productId: data.productId,
-    productCode: data.productCode,
-    productName: data.productName,
-    type: data.type,
-    quantity: data.quantity,
-    // ✅ Buscar el stock en varios campos posibles
-    resultingStock: data.resultingStock ?? data.newStock ?? data.currentStock ?? data.stock ?? data.finalStock ?? 0,
-    previousStock: data.previousStock ?? data.oldStock ?? 0,
-    unitPrice: data.unitPrice,
-    totalValue: data.totalValue,
-    userId: data.userId,
-    userEmail: data.userEmail,
-    userName: data.userEmail?.split('@')[0] || 'Usuario desconocido',
-    category: data.category || 'Sin categoría',
-    createdAt: data.createdAt?.toDate() || new Date(),
-    // Campos adicionales que podrían existir
-    newStock: data.newStock,
-    currentStock: data.currentStock,
-    stock: data.stock
-  } as MovementRecord;
-});
+    // CONVERTIR DATOS CON DEBUGGING
+    let allMovements = snapshot.docs.map(doc => {
+      const data = doc.data();
+      
+      // DEBUG: Ver qué campos de stock existen
+      console.log('🔍 Datos del documento:', {
+        id: doc.id,
+        resultingStock: data.resultingStock,
+        newStock: data.newStock,
+        currentStock: data.currentStock,
+        stock: data.stock,
+        finalStock: data.finalStock,
+        totalValue: data.totalValue,
+        // Ver todos los campos para debuggear
+        allFields: Object.keys(data)
+      });
+      
+      return {
+        id: doc.id,
+        date: data.createdAt?.toDate() || new Date(),
+        productId: data.productId,
+        productCode: data.productCode,
+        productName: data.productName,
+        type: data.type,
+        quantity: data.quantity,
+        // Buscar el stock en varios campos posibles
+        resultingStock: data.resultingStock ?? data.newStock ?? data.currentStock ?? data.stock ?? data.finalStock ?? 0,
+        previousStock: data.previousStock ?? data.oldStock ?? 0,
+        unitPrice: data.unitPrice,
+        totalValue: data.totalValue,
+        userId: data.userId,
+        userEmail: data.userEmail,
+        userName: data.userEmail?.split('@')[0] || 'Usuario desconocido',
+        category: data.category || 'Sin categoría',
+        createdAt: data.createdAt?.toDate() || new Date(),
+        // Campos adicionales que podrían existir
+        newStock: data.newStock,
+        currentStock: data.currentStock,
+        stock: data.stock
+      } as MovementRecord;
+    });
 
     console.log(`📊 Traídos ${allMovements.length} movimientos de Firestore`);
 
-    // ✅ FILTRADO EN MEMORIA (evita índices complejos)
     let filteredMovements = allMovements;
 
     // Filtrar por tipo
     if (filters.movementType && filters.movementType !== 'all') {
       filteredMovements = filteredMovements.filter(m => m.type === filters.movementType);
+      console.log(`🔍 Después del filtro de tipo: ${filteredMovements.length} movimientos`);
     }
 
     // Filtrar por usuario
@@ -251,6 +252,7 @@ let allMovements = snapshot.docs.map(doc => {
         m.userEmail?.toLowerCase().includes(userSearch) ||
         m.userName?.toLowerCase().includes(userSearch)
       );
+      console.log(`🔍 Después del filtro de usuario: ${filteredMovements.length} movimientos`);
     }
 
     // Filtrar por búsqueda de texto
@@ -262,9 +264,14 @@ let allMovements = snapshot.docs.map(doc => {
         movement.category?.toLowerCase().includes(searchLower) ||
         movement.userName?.toLowerCase().includes(searchLower)
       );
+      console.log(`🔍 Después del filtro de búsqueda: ${filteredMovements.length} movimientos`);
     }
 
-    // ✅ ORDENAMIENTO EN MEMORIA (siempre aplicar si no es orden por fecha descendente)
+    // ✅ APLICAR FILTROS ADICIONALES (INCLUYENDO MONTOS)
+    filteredMovements = applyAdditionalFilters(filteredMovements, filters);
+    console.log(`🔍 Después de filtros adicionales: ${filteredMovements.length} movimientos`);
+
+    // ORDENAMIENTO EN MEMORIA (siempre aplicar si no es orden por fecha descendente)
     const needsCustomSort = filters.sortBy !== MovementSortField.DATE || filters.sortOrder === 'asc';
     
     if (needsCustomSort) {
@@ -303,7 +310,7 @@ let allMovements = snapshot.docs.map(doc => {
       });
     }
 
-    // ✅ PAGINACIÓN EN MEMORIA
+    // PAGINACIÓN EN MEMORIA
     const pageSize = Math.min(Math.max(filters.pageSize || 50, 1), 1000);
     const page = Math.max(filters.page || 1, 1);
     const startIndex = (page - 1) * pageSize;
@@ -328,9 +335,9 @@ let allMovements = snapshot.docs.map(doc => {
       totalPages,
       hasNext,
       hasPrevious,
-      pageSize, // ✅ Añadir pageSize
-      totalValue, // ✅ Añadir totalValue
-      filters // ✅ Añadir filters
+      pageSize, 
+      totalValue, 
+      filters 
     };
     
   } catch (error) {
@@ -351,6 +358,7 @@ const applyAdditionalFilters = (movements: MovementRecord[], filters: MovementFi
     filtered = filtered.filter(mov => 
       mov.productCode.toLowerCase().includes(code)
     );
+    console.log(`🔍 Filtro productCode "${filters.productCode}": ${filtered.length} resultados`);
   }
 
   // Filtro por término de búsqueda
@@ -365,6 +373,7 @@ const applyAdditionalFilters = (movements: MovementRecord[], filters: MovementFi
       mov.customerName?.toLowerCase().includes(term) ||
       mov.batchCode?.toLowerCase().includes(term)
     );
+    console.log(`🔍 Filtro searchTerm "${filters.searchTerm}": ${filtered.length} resultados`);
   }
 
   // Filtro por categoría
@@ -372,6 +381,7 @@ const applyAdditionalFilters = (movements: MovementRecord[], filters: MovementFi
     filtered = filtered.filter(mov => 
       mov.category?.toLowerCase().includes(filters.category!.toLowerCase())
     );
+    console.log(`🔍 Filtro category "${filters.category}": ${filtered.length} resultados`);
   }
 
   // Filtro por código de lote
@@ -379,22 +389,65 @@ const applyAdditionalFilters = (movements: MovementRecord[], filters: MovementFi
     filtered = filtered.filter(mov => 
       mov.batchCode?.toLowerCase().includes(filters.batchCode!.toLowerCase())
     );
+    console.log(`🔍 Filtro batchCode "${filters.batchCode}": ${filtered.length} resultados`);
   }
 
-  // Filtro por montos
+  // ✅ FILTROS DE MONTOS - CORREGIDOS
   if (filters.minAmount !== undefined) {
-    filtered = filtered.filter(mov => (mov.totalValue || 0) >= filters.minAmount!);
+    const beforeCount = filtered.length;
+    filtered = filtered.filter(mov => {
+      const totalValue = mov.totalValue || 0;
+      return totalValue >= filters.minAmount!;
+    });
+    console.log(`🔍 Filtro minAmount ${filters.minAmount}: ${beforeCount} → ${filtered.length} resultados`);
+    
+    // Debug de valores
+    if (filtered.length === 0 && beforeCount > 0) {
+      console.log('⚠️ DEBUG: Valores encontrados en los movimientos:');
+      movements.slice(0, 5).forEach(mov => {
+        console.log(`- ${mov.productName}: totalValue = ${mov.totalValue}`);
+      });
+    }
   }
 
   if (filters.maxAmount !== undefined) {
-    filtered = filtered.filter(mov => (mov.totalValue || 0) <= filters.maxAmount!);
+    const beforeCount = filtered.length;
+    filtered = filtered.filter(mov => {
+      const totalValue = mov.totalValue || 0;
+      return totalValue <= filters.maxAmount!;
+    });
+    console.log(`🔍 Filtro maxAmount ${filters.maxAmount}: ${beforeCount} → ${filtered.length} resultados`);
+  }
+
+  // ✅ FILTROS DE CANTIDAD - AGREGADOS
+  if (filters.minQuantity !== undefined) {
+    const beforeCount = filtered.length;
+    filtered = filtered.filter(mov => (mov.quantity || 0) >= filters.minQuantity!);
+    console.log(`🔍 Filtro minQuantity ${filters.minQuantity}: ${beforeCount} → ${filtered.length} resultados`);
+  }
+
+  if (filters.maxQuantity !== undefined) {
+    const beforeCount = filtered.length;
+    filtered = filtered.filter(mov => (mov.quantity || 0) <= filters.maxQuantity!);
+    console.log(`🔍 Filtro maxQuantity ${filters.maxQuantity}: ${beforeCount} → ${filtered.length} resultados`);
   }
 
   // Filtro por productos con fecha de vencimiento
   if (filters.hasExpirationDate !== undefined) {
+    const beforeCount = filtered.length;
     filtered = filtered.filter(mov => 
       filters.hasExpirationDate ? mov.expirationDate !== undefined : mov.expirationDate === undefined
     );
+    console.log(`🔍 Filtro hasExpirationDate ${filters.hasExpirationDate}: ${beforeCount} → ${filtered.length} resultados`);
+  }
+
+  // Filtro por comentarios
+  if (filters.hasComments !== undefined) {
+    const beforeCount = filtered.length;
+    filtered = filtered.filter(mov => 
+      filters.hasComments ? (mov.comments && mov.comments.trim() !== '') : (!mov.comments || mov.comments.trim() === '')
+    );
+    console.log(`🔍 Filtro hasComments ${filters.hasComments}: ${beforeCount} → ${filtered.length} resultados`);
   }
 
   return filtered;
@@ -455,7 +508,7 @@ export const getMovementStatistics = async (filters: MovementFilters): Promise<M
     productId: mov.productId,
     productCode: mov.productCode,
     productName: mov.productName,
-    category: mov.category || 'Sin categoría', // ← Fix: asegurar que sea string
+    category: mov.category || 'Sin categoría', 
     totalMovements: 0,
     totalQuantity: 0,
     totalValue: 0,
@@ -752,7 +805,7 @@ const getMostActiveProduct = (movements: MovementRecord[]): ProductMovementStat 
     productId: mov.productId,
     productCode: mov.productCode,
     productName: mov.productName,
-    category: mov.category || 'Sin categoría', // ← Fix: asegurar que sea string
+    category: mov.category || 'Sin categoría', 
     totalMovements: 0,
     totalQuantity: 0,
     totalValue: 0,

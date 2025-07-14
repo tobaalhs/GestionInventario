@@ -50,7 +50,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               lastLogin: userData.lastLogin ? userData.lastLogin.toDate() : new Date()
             });
           } else {
-            // NOTIFICACIÓN: Usuario desautenticado
             setCurrentUser(null);
           }
         } catch (error) {

@@ -4,22 +4,19 @@ import { useAuth } from '../../contexts/AuthContext';
 import MovementHistory from './MovementHistory';
 import TransactionReports from './TransactionReports';
 import AdvancedSearch from './AdvancedSearch';
-import ExportManager from './ExportManager';
-import { getTokenStatistics, cleanupExpiredTokens } from '../../services/tokenService';
+import { getTokenStatistics, cleanupExpiredTokens } from '../../services/tokenService'; 
 import './Reports.css';
 
-type ReportView = 'overview' | 'movements' | 'transactions' | 'search' | 'exports';
+type ReportView = 'overview' | 'movements' | 'transactions' | 'search';
 
 interface DashboardStats {
   totalMovements: number;
   totalReports: number;
-  pendingExports: number;
-  lastUpdate: Date;
-  // ✅ Nuevas estadísticas de tokens
   totalTokens: number;
   activeTokens: number;
   expiredTokens: number;
   totalDownloads: number;
+  lastUpdate: Date;
 }
 
 const Reports: React.FC = () => {
@@ -30,12 +27,11 @@ const Reports: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalMovements: 0,
     totalReports: 0,
-    pendingExports: 0,
-    lastUpdate: new Date(),
     totalTokens: 0,
     activeTokens: 0,
     expiredTokens: 0,
-    totalDownloads: 0
+    totalDownloads: 0,
+    lastUpdate: new Date()
   });
 
   useEffect(() => {
@@ -46,29 +42,101 @@ const Reports: React.FC = () => {
     try {
       setLoading(true);
       
-      // ✅ Cargar estadísticas de tokens
       const tokenStats = await getTokenStatistics();
       
-      // Aquí cargarías las estadísticas reales del resto
-      // Por ahora usamos datos simulados para el ejemplo
+      let realMovementCount = 0;
+      let realReportCount = 0;
+      
+      try {
+        const { getDocs, collection, query, orderBy } = await import('firebase/firestore');
+        const { db } = await import('../../firebase/config');
+        
+        console.log('📊 Contando movimientos en stockMovements...');
+        const movementsQuery = query(
+          collection(db, 'stockMovements'),
+          orderBy('createdAt', 'desc')
+        );
+        const movementsSnapshot = await getDocs(movementsQuery);
+        realMovementCount = movementsSnapshot.size;
+        
+        console.log('📊 Movimientos encontrados:', realMovementCount);
+        
+        console.log('📋 Contando reportes...');
+        const reportsQuery = query(
+          collection(db, 'reports'),
+          orderBy('generatedAt', 'desc')
+        );
+        const reportsSnapshot = await getDocs(reportsQuery);
+        realReportCount = reportsSnapshot.size;
+        
+        console.log('📋 Reportes encontrados:', realReportCount);
+        
+      } catch (firestoreError) {
+        console.warn('⚠️ Error obteniendo estadísticas directas de Firestore:', firestoreError);
+        
+        try {
+          console.log('🔄 Usando servicios como fallback...');
+          const { searchMovements } = await import('../../services/movementHistoryService');
+          
+          const result = await searchMovements({
+            movementType: 'all',
+            pageSize: 10000,
+            page: 1
+          });
+          
+          realMovementCount = result.totalCount;
+          console.log('📊 Movimientos desde servicio:', realMovementCount);
+          
+        } catch (serviceError) {
+          console.warn('⚠️ Error usando servicio de movimientos:', serviceError);
+          realMovementCount = 0;
+        }
+        
+        try {
+          const { getRecentReports } = await import('../../services/reportService');
+          const reports = await getRecentReports(1000);
+          realReportCount = reports.length;
+          console.log('📋 Reportes desde servicio:', realReportCount);
+        } catch (serviceError) {
+          console.warn('⚠️ Error usando servicio de reportes:', serviceError);
+          realReportCount = 0;
+        }
+      }
+      
       setStats({
-        totalMovements: 1247,
-        totalReports: 28,
-        pendingExports: 3,
-        lastUpdate: new Date(),
+        totalMovements: realMovementCount, 
+        totalReports: realReportCount,     
         totalTokens: tokenStats.totalTokens,
         activeTokens: tokenStats.activeTokens,
         expiredTokens: tokenStats.expiredTokens,
-        totalDownloads: tokenStats.totalDownloads
+        totalDownloads: tokenStats.totalDownloads,
+        lastUpdate: new Date()
       });
+      
+      console.log('✅ Estadísticas actualizadas:', {
+        movimientos: realMovementCount,
+        reportes: realReportCount,
+        tokens: tokenStats.totalTokens
+      });
+      
     } catch (error) {
-      console.error('Error cargando estadísticas:', error);
+      console.error('❌ Error cargando estadísticas:', error);
+      setStats(prev => ({
+        ...prev,
+        totalMovements: 0,
+        totalReports: 0,
+        lastUpdate: new Date()
+      }));
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Función para limpiar tokens expirados
+  const refreshStats = async () => {
+    console.log('🔄 Refrescando estadísticas manualmente...');
+    await loadDashboardStats();
+  };
+
   const handleCleanupTokens = async () => {
     try {
       console.log('🧹 Iniciando limpieza de tokens...');
@@ -76,7 +144,7 @@ const Reports: React.FC = () => {
       
       if (deletedCount > 0) {
         alert(`✅ Se eliminaron ${deletedCount} tokens expirados.`);
-        await loadDashboardStats(); // Recargar estadísticas
+        await loadDashboardStats();
       } else {
         alert('ℹ️ No hay tokens expirados para eliminar.');
       }
@@ -94,8 +162,6 @@ const Reports: React.FC = () => {
         return <TransactionReports />;
       case 'search':
         return <AdvancedSearch />;
-      case 'exports':
-        return <ExportManager />;
       default:
         return renderOverview();
     }
@@ -109,7 +175,9 @@ const Reports: React.FC = () => {
           <div className="stat-content">
             <h3>Movimientos de Stock</h3>
             <p className="stat-number">{stats.totalMovements.toLocaleString()}</p>
-            <p className="stat-description">Total registrados</p>
+            <p className="stat-description">
+              {stats.totalMovements === 0 ? 'No hay movimientos registrados' : 'Total registrados'}
+            </p>
           </div>
         </div>
         
@@ -118,33 +186,61 @@ const Reports: React.FC = () => {
           <div className="stat-content">
             <h3>Reportes Generados</h3>
             <p className="stat-number">{stats.totalReports}</p>
-            <p className="stat-description">Este mes</p>
+            <p className="stat-description">
+              {stats.totalReports === 0 ? 'No hay reportes' : 'Total creados'}
+            </p>
           </div>
         </div>
         
         <div className="stat-card">
-          <div className="stat-icon">📤</div>
+          <div className="stat-icon">🔗</div>
           <div className="stat-content">
-            <h3>Exportaciones</h3>
-            <p className="stat-number">{stats.pendingExports}</p>
-            <p className="stat-description">Pendientes</p>
+            <h3>Enlaces Activos</h3>
+            <p className="stat-number">{stats.activeTokens}</p>
+            <p className="stat-description">Tokens válidos</p>
           </div>
         </div>
         
         <div className="stat-card">
-          <div className="stat-icon">🕒</div>
+          <div className="stat-icon">📥</div>
           <div className="stat-content">
-            <h3>Última Actualización</h3>
-            <p className="stat-number">{stats.lastUpdate.toLocaleTimeString('es-CL', { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            })}</p>
-            <p className="stat-description">Hoy</p>
+            <h3>Descargas Totales</h3>
+            <p className="stat-number">{stats.totalDownloads}</p>
+            <p className="stat-description">Realizadas</p>
           </div>
         </div>
       </div>
 
-      {/* ✅ Nueva sección de estadísticas de tokens */}
+      <div className="stats-info">
+        <div style={{
+          background: '#f0f9ff',
+          border: '1px solid #0ea5e9',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          margin: '16px 0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <p style={{ margin: '0', fontSize: '0.9em', color: '#0c4a6e' }}>
+              📊 <strong>Última actualización:</strong> {stats.lastUpdate.toLocaleString('es-CL')}
+            </p>
+            <p style={{ margin: '0', fontSize: '0.8em', color: '#0369a1' }}>
+              Las estadísticas se obtienen directamente desde Firebase Firestore
+            </p>
+          </div>
+          <button 
+            className="btn btn-sm btn-primary"
+            onClick={refreshStats}
+            disabled={loading}
+            style={{ minWidth: '120px' }}
+          >
+            {loading ? '🔄 Cargando...' : '🔄 Actualizar'}
+          </button>
+        </div>
+      </div>
+
       <div className="token-stats-section">
         <h3>🔗 Gestión de Enlaces de Descarga</h3>
         <div className="token-stats-grid">
@@ -194,16 +290,6 @@ const Reports: React.FC = () => {
             </div>
           </div>
         </div>
-        
-        <div className="token-info-panel">
-          <h4>ℹ️ Información sobre Enlaces Seguros</h4>
-          <ul>
-            <li>Los enlaces de descarga por email incluyen tokens temporales de seguridad</li>
-            <li>Los tokens expiran automáticamente después de 24 horas por defecto</li>
-            <li>No se requiere autenticación para usar los enlaces con token válido</li>
-            <li>El sistema realiza seguimiento de todas las descargas por seguridad</li>
-          </ul>
-        </div>
       </div>
 
       <div className="quick-actions">
@@ -215,8 +301,8 @@ const Reports: React.FC = () => {
           >
             <span className="action-icon">📈</span>
             <div className="action-content">
-              <h4>Ver Movimientos</h4>
-              <p>Historial completo de stock</p>
+              <h4>Historial de Movimientos</h4>
+              <p>Ver {stats.totalMovements.toLocaleString()} movimientos registrados</p>
             </div>
           </button>
 
@@ -226,8 +312,8 @@ const Reports: React.FC = () => {
           >
             <span className="action-icon">💼</span>
             <div className="action-content">
-              <h4>Generar Reporte</h4>
-              <p>Compras y ventas detalladas</p>
+              <h4>Reportes de Transacciones</h4>
+              <p>Generar y ver {stats.totalReports} reportes</p>
             </div>
           </button>
 
@@ -238,18 +324,19 @@ const Reports: React.FC = () => {
             <span className="action-icon">🔍</span>
             <div className="action-content">
               <h4>Búsqueda Avanzada</h4>
-              <p>Filtros y consultas específicas</p>
+              <p>Buscar en reportes y movimientos</p>
             </div>
           </button>
 
           <button 
             className="action-btn"
-            onClick={() => setCurrentView('exports')}
+            onClick={handleCleanupTokens}
+            disabled={stats.expiredTokens === 0}
           >
-            <span className="action-icon">📊</span>
+            <span className="action-icon">🧹</span>
             <div className="action-content">
-              <h4>Exportar Datos</h4>
-              <p>PDF, Excel con enlaces seguros</p>
+              <h4>Mantener Sistema</h4>
+              <p>Limpiar {stats.expiredTokens} tokens expirados</p>
             </div>
           </button>
         </div>
@@ -261,34 +348,40 @@ const Reports: React.FC = () => {
           <div className="activity-item">
             <span className="activity-icon">🔗</span>
             <div className="activity-content">
-              <p><strong>Token de descarga creado</strong> - Reporte de ventas Q4</p>
-              <span className="activity-time">Hace 30 minutos</span>
+              <p><strong>Sistema actualizado</strong> - Conteo corregido desde Firebase</p>
+              <span className="activity-time">{stats.lastUpdate.toLocaleTimeString('es-CL')}</span>
             </div>
           </div>
           
-          <div className="activity-item">
-            <span className="activity-icon">📈</span>
-            <div className="activity-content">
-              <p><strong>Compra procesada</strong> - COMP-20250709-001</p>
-              <span className="activity-time">Hace 2 horas</span>
+          {stats.totalReports > 0 && (
+            <div className="activity-item">
+              <span className="activity-icon">📊</span>
+              <div className="activity-content">
+                <p><strong>Reportes disponibles</strong> - {stats.totalReports} reportes generados</p>
+                <span className="activity-time">Sistema</span>
+              </div>
             </div>
-          </div>
+          )}
           
-          <div className="activity-item">
-            <span className="activity-icon">📊</span>
-            <div className="activity-content">
-              <p><strong>Reporte generado</strong> - Ventas diciembre 2024</p>
-              <span className="activity-time">Hace 4 horas</span>
+          {stats.totalMovements > 0 && (
+            <div className="activity-item">
+              <span className="activity-icon">📈</span>
+              <div className="activity-content">
+                <p><strong>Movimientos registrados</strong> - {stats.totalMovements.toLocaleString()} movimientos de stock</p>
+                <span className="activity-time">Base de datos</span>
+              </div>
             </div>
-          </div>
+          )}
           
-          <div className="activity-item">
-            <span className="activity-icon">📤</span>
-            <div className="activity-content">
-              <p><strong>Email enviado</strong> - Reporte con enlace seguro</p>
-              <span className="activity-time">Hace 6 horas</span>
+          {stats.activeTokens > 0 && (
+            <div className="activity-item">
+              <span className="activity-icon">🔗</span>
+              <div className="activity-content">
+                <p><strong>Enlaces activos</strong> - {stats.activeTokens} tokens válidos</p>
+                <span className="activity-time">Sistema de descarga</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -315,7 +408,10 @@ const Reports: React.FC = () => {
   if (loading) {
     return (
       <div className="inventory-container">
-        <div className="loading-spinner">Cargando reportes y estadísticas de tokens...</div>
+        <div className="loading-spinner">
+          <span style={{ fontSize: '3rem', animation: 'spin 1s linear infinite' }}>🔄</span>
+          <p>Cargando estadísticas del sistema...</p>
+        </div>
       </div>
     );
   }
@@ -334,15 +430,16 @@ const Reports: React.FC = () => {
         </div>
         <div className="header-title">
           <h1>📊 Centro de Reportes</h1>
-          <p>Historial, estadísticas y análisis del sistema de inventario con enlaces seguros</p>
+          <p>Sistema integrado de historial, reportes y búsqueda con estadísticas en tiempo real</p>
         </div>
         <div className="header-actions">
           <button 
             className="btn btn-secondary"
-            onClick={loadDashboardStats}
+            onClick={refreshStats}
+            disabled={loading}
             title="Actualizar estadísticas"
           >
-            🔄 Actualizar
+            {loading ? '🔄 Actualizando...' : '🔄 Actualizar'}
           </button>
           {stats.expiredTokens > 0 && (
             <button 
@@ -389,23 +486,100 @@ const Reports: React.FC = () => {
             <span className="nav-icon">🔍</span>
             Búsqueda Avanzada
           </button>
-          
-          <button 
-            className={`nav-btn ${currentView === 'exports' ? 'active' : ''}`}
-            onClick={() => setCurrentView('exports')}
-          >
-            <span className="nav-icon">📊</span>
-            Exportar Datos
-          </button>
         </nav>
       </div>
 
       <div className="reports-content">
         {renderCurrentView()}
       </div>
-      
-      {/* ✅ Estilos adicionales para los tokens */}
+
       <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        .stats-info {
+          margin: 16px 0;
+        }
+        
+        .loading-spinner {
+          text-align: center;
+          padding: 60px 20px;
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e2e8f0;
+        }
+        
+        .loading-spinner p {
+          margin: 16px 0 0 0;
+          color: #64748b;
+          font-size: 1.125rem;
+          font-weight: 500;
+        }
+        
+        .integration-info {
+          margin: 20px 0;
+          padding: 24px;
+          background: #ffffff;
+          border-radius: 12px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          border: 1px solid #e2e8f0;
+        }
+        
+        .integration-info h3 {
+          margin: 0 0 20px 0;
+          color: #1e293b;
+          font-size: 1.25rem;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .integration-cards {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 20px;
+        }
+        
+        .integration-card {
+          padding: 20px;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          background: #f8fafc;
+        }
+        
+        .integration-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+        
+        .integration-icon {
+          font-size: 1.5rem;
+        }
+        
+        .integration-header h4 {
+          margin: 0;
+          color: #334155;
+          font-size: 1rem;
+          font-weight: 600;
+        }
+        
+        .integration-card ul {
+          margin: 0;
+          padding-left: 20px;
+        }
+        
+        .integration-card li {
+          margin: 8px 0;
+          color: #475569;
+          font-size: 0.875rem;
+        }
+        
         .token-stats-section {
           margin: 20px 0;
           padding: 20px;
@@ -476,30 +650,6 @@ const Reports: React.FC = () => {
         
         .cleanup-btn:hover {
           background: #e0a800;
-        }
-        
-        .token-info-panel {
-          margin-top: 20px;
-          padding: 15px;
-          background: #e7f3ff;
-          border: 1px solid #b8daff;
-          border-radius: 6px;
-        }
-        
-        .token-info-panel h4 {
-          margin: 0 0 10px 0;
-          color: #004085;
-        }
-        
-        .token-info-panel ul {
-          margin: 0;
-          padding-left: 20px;
-        }
-        
-        .token-info-panel li {
-          margin: 5px 0;
-          color: #004085;
-          font-size: 14px;
         }
       `}</style>
     </div>

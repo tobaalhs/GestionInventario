@@ -28,7 +28,7 @@ const EmailModal: React.FC<EmailModalProps> = ({ report, onClose }) => {
       onClose();
       
     } catch (error) {
-      alert('❌ Error enviando el email: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+      alert('Error enviando el email: ' + (error instanceof Error ? error.message : 'Error desconocido'));
     } finally {
       setSending(false);
     }

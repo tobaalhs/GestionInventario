@@ -7,6 +7,10 @@ interface ReportModalProps {
   children: React.ReactNode;
   size?: 'small' | 'medium' | 'large' | 'xlarge';
   showCloseButton?: boolean;
+  downloadOptions?: {
+    onDownloadPDF?: () => Promise<void>;
+    onDownloadExcel?: () => Promise<void>;
+  };
 }
 
 const ReportModal: React.FC<ReportModalProps> = ({
@@ -14,7 +18,8 @@ const ReportModal: React.FC<ReportModalProps> = ({
   onClose,
   children,
   size = 'medium',
-  showCloseButton = true
+  showCloseButton = true,
+  downloadOptions
 }) => {
   // Cerrar modal con ESC
   useEffect(() => {
@@ -69,8 +74,46 @@ const ReportModal: React.FC<ReportModalProps> = ({
         <div className="modal-body">
           {children}
         </div>
-      </div>
 
+        {downloadOptions && (
+          <div className="modal-actions">
+            <button 
+              className="btn btn-secondary"
+              onClick={onClose}
+            >
+              Cancelar
+            </button>
+            {downloadOptions.onDownloadPDF && (
+              <button 
+                className="btn btn-primary"
+                onClick={async () => {
+                  try {
+                    await downloadOptions.onDownloadPDF?.();
+                  } finally {
+                    onClose();
+                  }
+                }}
+              >
+                Descargar PDF
+              </button>
+            )}
+            {downloadOptions.onDownloadExcel && (
+              <button 
+                className="btn btn-success"
+                onClick={async () => {
+                  try {
+                    await downloadOptions.onDownloadExcel?.();
+                  } finally {
+                    onClose();
+                  }
+                }}
+              >
+                Descargar Excel
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

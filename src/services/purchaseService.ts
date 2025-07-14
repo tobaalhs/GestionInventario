@@ -154,7 +154,7 @@ export const createPurchase = async (purchaseData: Omit<Purchase, 'id' | 'create
 
     console.log('🏗️ Preparando datos para guardar en Firestore...');
 
-    // ✅ Función helper para limpiar valores undefined
+    //  Función helper para limpiar valores undefined
     const cleanObject = (obj: any): any => {
       const cleaned: any = {};
       Object.keys(obj).forEach(key => {
@@ -433,7 +433,7 @@ export const deletePurchase = async (id: string): Promise<void> => {
 
 /**
  * Procesar transacción completa de compra
- * Incluye: crear/actualizar productos, actualizar stock, crear movimientos, registrar compra
+
  */
 export const processPurchaseTransaction = async (purchaseData: Purchase): Promise<void> => {
   try {
@@ -467,7 +467,7 @@ export const processPurchaseTransaction = async (purchaseData: Purchase): Promis
         let productId = item.productId;
 
         if (item.isNewProduct || !productId) {
-          // ✅ CASO 1: PRODUCTO NUEVO - CON HISTORIAL
+          //  CASO 1: PRODUCTO NUEVO 
           console.log('Registrando nuevo producto con historial:', item.productName);
           
           const newProductData = {
@@ -477,7 +477,7 @@ export const processPurchaseTransaction = async (purchaseData: Purchase): Promis
             price: item.unitPrice,
             sellPrice: item.unitPrice * 1.3, // 30% de margen por defecto
             supplier: purchaseData.supplierInfo.name,
-            stock: item.quantity, // ✅ El stock inicial ya incluye la compra
+            stock: item.quantity, 
             description: '',
             imageUrl: '',
             imageAlt: `Imagen de ${item.productName}`,
@@ -488,16 +488,16 @@ export const processPurchaseTransaction = async (purchaseData: Purchase): Promis
             newProductData,
             purchaseData.userId,
             purchaseData.userEmail,
-            purchaseData.code // ✅ Pasar código de compra para historial
+            purchaseData.code 
           );
           
           // Actualizar el item con el ID del producto creado
           item.productId = productId;
         } else {
-          // ✅ CASO 2: PRODUCTO EXISTENTE - CON HISTORIAL
+          //  CASO 2: PRODUCTO EXISTENTE - CON HISTORIAL
           console.log('Actualizando producto existente con historial:', item.productName);
           
-          // ✅ REGISTRAR HISTORIAL DEL CAMBIO DE STOCK
+          //  REGISTRAR HISTORIAL DEL CAMBIO DE STOCK
           await updateStockWithHistoryForPurchase(
             productId,
             item.quantity,
@@ -535,7 +535,7 @@ export const processPurchaseTransaction = async (purchaseData: Purchase): Promis
           movementData.expirationDate = item.expirationDate;
         }
         
-        // ✅ ESTA FUNCIÓN YA ACTUALIZA EL STOCK CORRECTAMENTE
+        //  ESTA FUNCIÓN YA ACTUALIZA EL STOCK CORRECTAMENTE
         await createStockMovement(movementData);
       }
 
