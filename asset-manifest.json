@@ -1,16 +1,24 @@
 {
   "files": {
-    "main.css": "/GestionInventario/static/css/main.89fed65f.css",
-    "main.js": "/GestionInventario/static/js/main.db20097b.js",
+    "main.css": "/GestionInventario/static/css/main.b29be81b.css",
+    "main.js": "/GestionInventario/static/js/main.b33aebec.js",
+    "static/js/487.89e3d0a1.chunk.js": "/GestionInventario/static/js/487.89e3d0a1.chunk.js",
+    "static/js/239.1f8ed688.chunk.js": "/GestionInventario/static/js/239.1f8ed688.chunk.js",
+    "static/js/977.858d15c9.chunk.js": "/GestionInventario/static/js/977.858d15c9.chunk.js",
+    "static/js/732.07b5e603.chunk.js": "/GestionInventario/static/js/732.07b5e603.chunk.js",
     "static/js/453.7881d95d.chunk.js": "/GestionInventario/static/js/453.7881d95d.chunk.js",
     "static/media/logo-sgi.png": "/GestionInventario/static/media/logo-sgi.9bfff9ca211312e41fd4.png",
     "index.html": "/GestionInventario/index.html",
-    "main.89fed65f.css.map": "/GestionInventario/static/css/main.89fed65f.css.map",
-    "main.db20097b.js.map": "/GestionInventario/static/js/main.db20097b.js.map",
+    "main.b29be81b.css.map": "/GestionInventario/static/css/main.b29be81b.css.map",
+    "main.b33aebec.js.map": "/GestionInventario/static/js/main.b33aebec.js.map",
+    "487.89e3d0a1.chunk.js.map": "/GestionInventario/static/js/487.89e3d0a1.chunk.js.map",
+    "239.1f8ed688.chunk.js.map": "/GestionInventario/static/js/239.1f8ed688.chunk.js.map",
+    "977.858d15c9.chunk.js.map": "/GestionInventario/static/js/977.858d15c9.chunk.js.map",
+    "732.07b5e603.chunk.js.map": "/GestionInventario/static/js/732.07b5e603.chunk.js.map",
     "453.7881d95d.chunk.js.map": "/GestionInventario/static/js/453.7881d95d.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.89fed65f.css",
-    "static/js/main.db20097b.js"
+    "static/css/main.b29be81b.css",
+    "static/js/main.b33aebec.js"
   ]
 }
