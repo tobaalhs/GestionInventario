@@ -2031,3 +2031,33 @@ code {
     font-size: 0.85rem;
   }
 }
+
+.details-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.details-table th,
+.details-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.details-table th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+.details-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+.details-table td {
+  font-size: 14px;
+}
+
+.details-table td strong {
+  font-weight: 600;
+}

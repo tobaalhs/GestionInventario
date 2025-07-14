@@ -476,10 +476,6 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
             <option value="all">📋 Todos los tipos</option>
             <option value={MovementType.PURCHASE}>📦 Compras</option>
             <option value={MovementType.SALE}>💰 Ventas</option>
-            <option value={MovementType.ADJUSTMENT}>⚙️ Ajustes</option>
-            <option value={MovementType.RETURN}>↩️ Devoluciones</option>
-            <option value={MovementType.EXPIRED}>⏰ Vencidos</option>
-            <option value={MovementType.DAMAGED}>⚠️ Dañados</option>
           </select>
         </div>
       </div>
@@ -1162,25 +1158,65 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = () => {
       )}
 
       {selectedItem && showDetailsModal && (
-        <ReportModal
-          title="📋 Detalles del Elemento"
-          onClose={() => setShowDetailsModal(false)}
-        >
-          <div className="item-details">
-            <pre style={{ 
-              background: '#f5f5f5', 
-              padding: '15px', 
-              borderRadius: '4px', 
-              fontSize: '12px',
-              maxHeight: '400px',
-              overflow: 'auto',
-              whiteSpace: 'pre-wrap'
-            }}>
-              {JSON.stringify(selectedItem, null, 2)}
-            </pre>
-          </div>
-        </ReportModal>
-      )}
+  <ReportModal
+    title="📋 Detalles del Elemento"
+    onClose={() => setShowDetailsModal(false)}
+  >
+    <div className="item-details">
+      <table className="details-table">
+        <thead>
+          <tr>
+            <th>Campo</th>
+            <th>Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>ID</strong></td>
+            <td>{selectedItem.id}</td>
+          </tr>
+          <tr>
+            <td><strong>Fecha</strong></td>
+            <td>{new Date(selectedItem.date).toLocaleString()}</td>
+          </tr>
+          <tr>
+            <td><strong>Producto</strong></td>
+            <td>{selectedItem.productName}</td>
+          </tr>
+          <tr>
+            <td><strong>Código de Producto</strong></td>
+            <td>{selectedItem.productCode}</td>
+          </tr>
+          <tr>
+            <td><strong>Stock Resultante</strong></td>
+            <td>{selectedItem.resultingStock}</td>
+          </tr>
+          <tr>
+            <td><strong>Tipo</strong></td>
+            <td>{selectedItem.type}</td>
+          </tr>
+          <tr>
+            <td><strong>Cantidad</strong></td>
+            <td>{selectedItem.quantity}</td>
+          </tr>
+          <tr>
+            <td><strong>Valor Total</strong></td>
+            <td>{formatCurrency(selectedItem.totalValue)}</td>
+          </tr>
+          <tr>
+            <td><strong>Usuario</strong></td>
+            <td>{selectedItem.userName}</td>
+          </tr>
+          <tr>
+            <td><strong>Email Usuario</strong></td>
+            <td>{selectedItem.userEmail}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ReportModal>
+)}
+
     </div>
   );
 };
